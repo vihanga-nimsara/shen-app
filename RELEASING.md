@@ -32,13 +32,14 @@ A local self-signed code-signing certificate lives in `certs/` (ignored by git):
 will still show an unknown-publisher warning until the `.cer` is installed there
 (or an OV/EV certificate is used).
 
-The public certificate is also committed as `build/shen-codesign.cer`. It is
-packaged into the app as `resources/shen-codesign.cer` and attached to every
-GitHub release, so users can trust it:
+The public certificate is also committed as `build/shen-codesign.cer`, with a PEM
+copy at `build/shen-codesign.pem`. The `.cer` is packaged into the app as
+`resources/shen-codesign.cer`; the `.pem` is attached to every GitHub release so
+users can trust it:
 
 ```powershell
-certutil -addstore -user Root build/shen-codesign.cer
-certutil -addstore -user TrustedPublisher build/shen-codesign.cer
+certutil -addstore -user Root build/shen-codesign.pem
+certutil -addstore -user TrustedPublisher build/shen-codesign.pem
 ```
 
 To build signed locally:

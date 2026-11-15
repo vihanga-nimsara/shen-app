@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-electron/
+release/
+certs/
+.env
+.env.*
+!.env.example
+*.log
+dev-run.log
+prod-run.log
+pack-win.log
+dist-win.log
+screenshot*.png
+shot*.png
+.DS_Store

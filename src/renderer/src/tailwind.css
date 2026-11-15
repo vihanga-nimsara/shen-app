@@ -1,0 +1,13 @@
+/*
+ * Tailwind utilities only (no preflight), used by shadcn registry components
+ * such as @loading-ui/classic. The app's design system lives in index.css, so
+ * we deliberately skip Tailwind's reset and theme to avoid clobbering it.
+ */
+
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  --spacing: 0.25rem;
+}

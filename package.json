@@ -75,6 +75,12 @@
       "dist-electron/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "build/shen-codesign.cer",
+        "to": "shen-codesign.cer"
+      }
+    ],
     "publish": [
       {
         "provider": "github",

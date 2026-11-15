@@ -82,6 +82,18 @@ export default defineConfig(({ mode }) => {
               rollupOptions: { external: ['electron', 'electron-updater'] }
             }
           }
+        },
+        {
+          entry: fileURLToPath(new URL('./src/preload/index.ts', import.meta.url)),
+          vite: {
+            build: {
+              outDir: fileURLToPath(new URL('./dist-electron/preload', import.meta.url)),
+              rollupOptions: {
+                external: ['electron'],
+                output: { format: 'cjs', entryFileNames: 'index.cjs' }
+              }
+            }
+          }
         }
       ])
     ],

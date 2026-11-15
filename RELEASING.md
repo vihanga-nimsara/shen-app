@@ -77,14 +77,20 @@ repository's `GITHUB_TOKEN`. To sign in CI, add these repository secrets:
 
 Without the secrets the workflow produces an unsigned installer.
 
+> GitHub blocks pushes that add workflow files when the authenticated OAuth app
+> lacks the `workflow` scope. Grant it once with `gh auth refresh -s workflow`,
+> then commit/push `.github/workflows/release.yml`. Until then, use the local
+> `npm run release:win` command above.
+
 ## Auto-updates
 
 `electron-updater` is wired in the main process:
 
 - checks GitHub ~6 seconds after startup (packaged builds only)
 - downloads new versions in the background
-- shows the standard "update downloaded" notification
+- shows native Windows notifications when an update is downloading and when it is ready
 - installs on quit (`autoInstallOnAppQuit`)
+- Support tab has a **Check for updates** button, live progress and **Restart & install**
 
 The feed is the `latest.yml` asset on the newest GitHub release. Repo visibility
 must stay public for unauthenticated update checks.

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, session, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, Notification, session, shell } from 'electron'
 import fs from 'node:fs'
 import http from 'node:http'
 import https from 'node:https'
@@ -6,6 +6,7 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { getNorthflankLive } from '../shared/nf-live'
+import type { UpdateStatus } from '../shared/update-types'
 
 // electron-updater is CommonJS; require it so the ESM main bundle keeps it
 // external instead of inlining (and so node_modules/electron-updater is used).
@@ -246,7 +247,8 @@ function createWindow(appUrl: string) {
       : {}),
     webPreferences: {
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      preload: path.join(__dirname, '..', 'preload', 'index.cjs')
     }
   })
 
@@ -282,17 +284,70 @@ function createWindow(appUrl: string) {
   }
 }
 
+function broadcastUpdate(status: UpdateStatus) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send('shen:update-status', status)
+  }
+}
+
+function showUpdateNotification(title: string, body: string, onClick?: () => void) {
+  if (!Notification.isSupported()) return
+  const notification = new Notification({ title, body })
+  if (onClick) notification.on('click', onClick)
+  notification.show()
+}
+
+function setupUpdateIpc() {
+  ipcMain.handle('shen:version', () => app.getVersion())
+  ipcMain.handle('shen:check-updates', async () => {
+    if (!app.isPackaged) {
+      broadcastUpdate({ state: 'dev' })
+      return
+    }
+    broadcastUpdate({ state: 'checking' })
+    try {
+      await autoUpdater.checkForUpdates()
+    } catch (err) {
+      broadcastUpdate({
+        state: 'error',
+        message: err instanceof Error ? err.message : String(err)
+      })
+    }
+  })
+  ipcMain.handle('shen:install-update', () => {
+    autoUpdater.quitAndInstall(false, true)
+  })
+}
+
 function setupAutoUpdates() {
   if (!app.isPackaged) return
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
   autoUpdater.logger = console
-  autoUpdater.on('error', (err) => console.error('[update] error:', err.message))
-  autoUpdater.on('checking-for-update', () => console.log('[update] checking for updates'))
-  autoUpdater.on('update-available', (info) => console.log('[update] available:', info.version))
-  autoUpdater.on('update-not-available', () => console.log('[update] up to date'))
+  autoUpdater.on('checking-for-update', () => broadcastUpdate({ state: 'checking' }))
+  autoUpdater.on('update-available', (info) => {
+    broadcastUpdate({ state: 'available', version: info.version })
+    // Native OS toast, in addition to the in-app Update card.
+    showUpdateNotification(
+      'Shen update available',
+      `Version ${info.version} is downloading in the background.`
+    )
+  })
+  autoUpdater.on('update-not-available', () => broadcastUpdate({ state: 'idle' }))
+  autoUpdater.on('download-progress', (progress) => {
+    broadcastUpdate({ state: 'downloading', percent: Math.round(progress.percent) })
+  })
   autoUpdater.on('update-downloaded', (info) => {
-    console.log('[update] downloaded:', info.version, '(installs on quit)')
+    broadcastUpdate({ state: 'downloaded', version: info.version })
+    showUpdateNotification(
+      'Shen update ready',
+      `Version ${info.version} will install when you quit. Click to restart now.`,
+      () => autoUpdater.quitAndInstall(false, true)
+    )
+  })
+  autoUpdater.on('error', (err) => {
+    console.error('[update] error:', err.message)
+    broadcastUpdate({ state: 'error', message: err.message })
   })
   // Let the window settle before hitting GitHub.
   setTimeout(() => {
@@ -317,6 +372,7 @@ if (!gotSingleInstanceLock) {
   app.whenReady().then(async () => {
     app.setAppUserModelId('space.zagan.shen')
     Menu.setApplicationMenu(null)
+    setupUpdateIpc()
     void ensureLoginServer().catch((err) => console.error('[auth] login server failed:', err))
     const appUrl = await resolveAppUrl()
     createWindow(appUrl)

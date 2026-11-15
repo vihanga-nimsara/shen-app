@@ -1,0 +1,66 @@
+name: Bug report
+description: Something in Shen isn't working as expected
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please include as much detail as you can.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the problem.
+      placeholder: When I click …, Shen …
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Shen
+        2. Go to …
+        3. Click …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      placeholder: I expected …
+  - type: input
+    id: version
+    attributes:
+      label: Shen version
+      description: Shown in About or Help → Updates.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 23H2
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Playback / audio
+        - Discord login
+        - Queue / pending
+        - Search
+        - Library / playlists
+        - Now Playing / UI
+        - Updates
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots or logs
+      description: Drag screenshots here, or paste any error messages.
+      render: shell

@@ -40,7 +40,10 @@ import {
   House,
   ShieldCheck,
   Clock3,
-  Mic2
+  Mic2,
+  LifeBuoy,
+  Bug,
+  Lightbulb
 } from 'lucide-react'
 import {
   audioUrl,
@@ -80,6 +83,7 @@ import {
   type User
 } from './api'
 import { getNorthflankLive, type NfLive, type NfMetric } from './nf'
+import type { UpdateStatus } from '../../shared/update-types'
 import { Classic } from './components/classic'
 import { DiscordIcon } from './components/discord-icon'
 import SoftAurora from './components/SoftAurora'
@@ -96,6 +100,7 @@ type View =
   | 'favorites'
   | 'status'
   | 'about'
+  | 'support'
   | 'settings'
 
 type Theme = 'dark' | 'light' | 'system'
@@ -111,7 +116,8 @@ const NAV: { id: View; label: string; icon: ReactNode }[] = [
   { id: 'playlists', label: 'Playlists', icon: <Disc3 size={15} /> },
   { id: 'favorites', label: 'Favorites', icon: <Heart size={15} /> },
   { id: 'status', label: 'Status', icon: <Activity size={15} /> },
-  { id: 'about', label: 'About', icon: <Info size={15} /> }
+  { id: 'about', label: 'About', icon: <Info size={15} /> },
+  { id: 'support', label: 'Support', icon: <LifeBuoy size={15} /> }
 ]
 
 const TITLES: Record<View, string> = {
@@ -124,6 +130,7 @@ const TITLES: Record<View, string> = {
   favorites: 'Favorites',
   status: 'Status',
   about: 'About',
+  support: 'Support',
   settings: 'Settings'
 }
 
@@ -163,6 +170,8 @@ export default function App() {
   const [discordPending, setDiscordPending] = useState<string | null>(null)
   const [pingSamples, setPingSamples] = useState<{ at: number; ms: number }[]>([])
   const [dismissedAlert, setDismissedAlert] = useState(false)
+  const [update, setUpdate] = useState<UpdateStatus>({ state: 'idle' })
+  const [appVersion, setAppVersion] = useState('0.1.0')
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows')
@@ -238,6 +247,14 @@ export default function App() {
     const timer = window.setInterval(() => void loadNf(), 5000)
     return () => window.clearInterval(timer)
   }, [view, loadNf])
+
+  // Native update bridge (preload): version + live update status.
+  useEffect(() => {
+    const api = window.shen
+    if (!api) return
+    void api.getVersion().then(setAppVersion).catch(() => {})
+    return api.onUpdate(setUpdate)
+  }, [])
 
   // When the Discord bot starts a new track, bring the app to Now Playing.
   const lastDiscordTrack = useRef<string | null>(null)
@@ -591,6 +608,7 @@ export default function App() {
 
   const dockTrack = current ?? status?.nowPlaying ?? null
   const dockSource = current ? 'Browser' : dockTrack ? 'Discord' : null
+  const updateInfo = updateMessage(update)
 
   const renderTrackList = (
     list: Track[],
@@ -1281,7 +1299,7 @@ export default function App() {
                     listen together.
                   </p>
                 </div>
-                <span className="pill">v0.1.0</span>
+                <span className="pill">v{appVersion}</span>
               </div>
 
               <div className="about-made">
@@ -1302,6 +1320,100 @@ export default function App() {
               <div className="about-foot">
                 <span className="muted">Made for the Shen community.</span>
                 <span className="muted">{new Date().getFullYear()}</span>
+              </div>
+            </div>
+          ) : null}
+
+          {view === 'support' ? (
+            <div className="support">
+              <div className="support-card">
+                <div className="support-head">
+                  <span className="with-icon">
+                    <RefreshCw size={13} /> Updates
+                  </span>
+                  <span className="pill">v{appVersion}</span>
+                </div>
+                <div className="support-row">
+                  <div className="support-copy">
+                    <div className="setting-name">{updateInfo.title}</div>
+                    <div className="setting-desc">{updateInfo.body}</div>
+                  </div>
+                  {update.state === 'downloaded' ? (
+                    <Button size="sm" onClick={() => void window.shen?.installUpdate()}>
+                      Restart & install
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={
+                        !window.shen ||
+                        update.state === 'checking' ||
+                        update.state === 'downloading' ||
+                        update.state === 'dev'
+                      }
+                      onClick={() => void window.shen?.checkForUpdates()}
+                    >
+                      {update.state === 'checking' || update.state === 'downloading' ? (
+                        <Classic className="row-loader" />
+                      ) : (
+                        <RefreshCw size={12} />
+                      )}
+                      Check for updates
+                    </Button>
+                  )}
+                </div>
+                {update.state === 'downloading' ? (
+                  <div className="update-progress">
+                    <span style={{ width: `${update.percent ?? 0}%` }} />
+                  </div>
+                ) : null}
+                <div className={`support-note${update.state === 'error' ? ' error' : ''}`}>
+                  {update.state === 'error'
+                    ? update.message
+                    : 'Updates come from GitHub releases and install when Shen restarts.'}
+                </div>
+              </div>
+
+              <div className="support-grid">
+                <a
+                  className="support-card support-link"
+                  href="https://github.com/vihanga-nimsara/shen-app/issues/new?template=bug_report.yml"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span className="support-icon">
+                    <Bug size={16} />
+                  </span>
+                  <span className="support-copy">
+                    <span className="setting-name">Report a bug</span>
+                    <span className="setting-desc">
+                      Something broken? Open an issue with your version and logs.
+                    </span>
+                  </span>
+                  <ArrowUpRight size={14} className="support-arrow" />
+                </a>
+                <a
+                  className="support-card support-link"
+                  href="https://github.com/vihanga-nimsara/shen-app/issues/new?template=feature_request.yml"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span className="support-icon">
+                    <Lightbulb size={16} />
+                  </span>
+                  <span className="support-copy">
+                    <span className="setting-name">Request a feature</span>
+                    <span className="setting-desc">
+                      Tell us what would make Shen better.
+                    </span>
+                  </span>
+                  <ArrowUpRight size={14} className="support-arrow" />
+                </a>
+              </div>
+
+              <div className="support-foot">
+                Issues and releases live on github.com/vihanga-nimsara/shen-app
               </div>
             </div>
           ) : null}
@@ -1849,6 +1961,40 @@ function NowPlaying({
       </div>
     </>
   )
+}
+
+function updateMessage(status: UpdateStatus): { title: string; body: string } {
+  switch (status.state) {
+    case 'dev':
+      return {
+        title: 'Updates are checked in the packaged app',
+        body: 'Run the installed build to check GitHub releases.'
+      }
+    case 'checking':
+      return { title: 'Checking for updates…', body: 'Looking at the latest GitHub release.' }
+    case 'available':
+      return {
+        title: `Shen ${status.version} is available`,
+        body: 'Downloading in the background.'
+      }
+    case 'downloading':
+      return {
+        title: `Downloading ${status.version ? `Shen ${status.version}` : 'update'}`,
+        body: `${status.percent ?? 0}% complete.`
+      }
+    case 'downloaded':
+      return {
+        title: 'Update ready to install',
+        body: `Shen ${status.version} installs the next time you quit.`
+      }
+    case 'error':
+      return {
+        title: 'Update check failed',
+        body: status.message || 'Could not reach GitHub.'
+      }
+    default:
+      return { title: 'Shen is up to date', body: 'You are on the latest GitHub release.' }
+  }
 }
 
 function formatSpan(seconds: number): string {

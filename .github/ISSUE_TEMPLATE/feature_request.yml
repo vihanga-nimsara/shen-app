@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest an idea for Shen
+title: '[Feature]: '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Tell us what would make Shen better.
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      placeholder: I'd love Shen to …
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is it useful?
+      placeholder: This would help when …
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Playback / audio
+        - Queue / pending
+        - Search
+        - Library / playlists
+        - Now Playing / UI
+        - Discord integration
+        - Updates
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or mockups
+      description: Links, sketches or other apps that do this well.

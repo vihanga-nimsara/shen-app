@@ -88,10 +88,12 @@ export default defineConfig(({ mode }) => {
           vite: {
             build: {
               outDir: fileURLToPath(new URL('./dist-electron/preload', import.meta.url)),
-              rollupOptions: {
-                external: ['electron'],
-                output: { format: 'cjs', entryFileNames: 'index.cjs' }
-              }
+              lib: {
+                entry: fileURLToPath(new URL('./src/preload/index.ts', import.meta.url)),
+                formats: ['cjs'],
+                fileName: () => 'index.cjs'
+              },
+              rollupOptions: { external: ['electron'] }
             }
           }
         }

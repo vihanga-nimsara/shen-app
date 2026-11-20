@@ -1628,7 +1628,7 @@ export default function App() {
               </div>
 
               <div className="support-foot">
-                Feedback goes straight to the Shen team. GitHub issues still work too.
+                Feedback goes to the Shen team. Releases and updates come from GitHub.
               </div>
             </div>
           ) : null}

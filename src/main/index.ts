@@ -362,9 +362,14 @@ function setupAutoUpdates() {
   }, 6000)
 }
 
-const gotSingleInstanceLock = app.requestSingleInstanceLock()
+// The lock matters for the installed app (focus the existing window, let the
+// updater replace files). In development Vite restarts Electron on rebuilds,
+// and a new instance can race the old one's lock release and immediately quit.
+// Keep dev multi-instance so a reload never kills the whole dev server.
+const gotSingleInstanceLock = !app.isPackaged || app.requestSingleInstanceLock()
 
 if (!gotSingleInstanceLock) {
+  console.error('[main] another Shen instance holds the lock; quitting')
   app.quit()
 } else {
   app.on('second-instance', () => {

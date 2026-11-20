@@ -23,7 +23,7 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "pack:win": "npm run build && electron-builder --win --dir",
-    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist:win": "npm run build && electron-builder --win nsis --publish never",
     "release:win": "npm run build && electron-builder --win nsis --publish always"
   },
   "dependencies": {

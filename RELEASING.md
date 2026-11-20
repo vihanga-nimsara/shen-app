@@ -108,8 +108,19 @@ must stay public for unauthenticated update checks.
 ## Runtime configuration
 
 The renderer talks to `https://shen.zagan.space` by default. Override with
-`SHEN_API_URL` (see `.env.example`). The Status tab uses `NORTHFLANK_API_TOKEN`
-when set, otherwise it falls back to the local `northflank login` session.
+`SHEN_API_URL` (see `.env.example`).
+
+**Status tab:** the app asks the hosted backend's `/api/metrics`. The backend
+reports its own container CPU, memory and network counters, so desktop users do
+not need a Northflank account or API key. Setting `NORTHFLANK_API_TOKEN` on the
+backend switches it to the richer Northflank API response. The token never
+reaches the desktop app.
+
+**Support feedback:** `/api/feedback` on the backend writes to Supabase with
+`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (see
+`supabase/shen-feedback.sql`). If that route is not configured, the app writes
+to the same table directly with the publishable key; the table is insert-only
+for anonymous clients and has no read policy.
 
 Secrets are **not** baked into the installer. Set environment variables on the
 machine, or place a `.env` next to `Shen.exe` / in the working directory.

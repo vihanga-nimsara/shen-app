@@ -34,15 +34,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and publish installer
-        run: npm run release:win
+      - name: Build signed installer
+        run: npm run dist:win
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Optional self-signed / PFX signing certificate, base64 encoded.
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
-      - name: Attach public signing certificate
-        run: gh release upload "v$(node -p "require('./package.json').version")" build/shen-codesign.pem --clobber
+      - name: Upload release assets
+        shell: pwsh
+        run: |
+          $tag = "v$(node -p "require('./package.json').version")"
+          $assets = Get-ChildItem release -File | Where-Object {
+            $_.Name -match '^Shen-.*-Setup\.exe(\.blockmap)?$' -or $_.Name -eq 'latest.yml'
+          }
+          gh release upload $tag @($assets.FullName) --clobber
+          gh release upload $tag build/shen-codesign.pem --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

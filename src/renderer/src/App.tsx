@@ -43,7 +43,9 @@ import {
   Mic2,
   LifeBuoy,
   Bug,
-  Lightbulb
+  Lightbulb,
+  Sun,
+  Moon
 } from 'lucide-react'
 import {
   audioUrl,
@@ -83,6 +85,7 @@ import {
   type User
 } from './api'
 import { getNorthflankLive, type NfLive, type NfMetric } from './nf'
+import { submitFeedback, type FeedbackKind, type FeedbackResult } from './feedback'
 import type { UpdateStatus } from '../../shared/update-types'
 import { Classic } from './components/classic'
 import { DiscordIcon } from './components/discord-icon'
@@ -171,7 +174,13 @@ export default function App() {
   const [pingSamples, setPingSamples] = useState<{ at: number; ms: number }[]>([])
   const [dismissedAlert, setDismissedAlert] = useState(false)
   const [update, setUpdate] = useState<UpdateStatus>({ state: 'idle' })
-  const [appVersion, setAppVersion] = useState('0.1.0')
+  const [appVersion, setAppVersion] = useState(__APP_VERSION__)
+  const [feedbackKind, setFeedbackKind] = useState<FeedbackKind | null>(null)
+  const [feedbackTitle, setFeedbackTitle] = useState('')
+  const [feedbackBody, setFeedbackBody] = useState('')
+  const [feedbackEmail, setFeedbackEmail] = useState('')
+  const [feedbackBusy, setFeedbackBusy] = useState(false)
+  const [feedbackResult, setFeedbackResult] = useState<FeedbackResult | null>(null)
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows')
@@ -186,6 +195,8 @@ export default function App() {
   })
   const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('shen-sidebar') !== 'closed')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuQuery, setMenuQuery] = useState('')
+  const [menuIndex, setMenuIndex] = useState(0)
 
   useEffect(() => {
     localStorage.setItem('shen-sidebar', sidebarOpen ? 'open' : 'closed')
@@ -198,6 +209,13 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
+
+  useEffect(() => {
+    if (menuOpen) {
+      setMenuQuery('')
+      setMenuIndex(0)
+    }
   }, [menuOpen])
 
   useEffect(() => {
@@ -535,6 +553,52 @@ export default function App() {
     [run]
   )
 
+  const openFeedback = (kind: FeedbackKind) => {
+    setFeedbackKind(kind)
+    setFeedbackTitle('')
+    setFeedbackBody('')
+    setFeedbackEmail('')
+    setFeedbackResult(null)
+  }
+
+  const closeFeedback = () => {
+    if (feedbackBusy) return
+    setFeedbackKind(null)
+  }
+
+  useEffect(() => {
+    if (!feedbackKind) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (!feedbackBusy) setFeedbackKind(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [feedbackKind, feedbackBusy])
+
+  const sendFeedback = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!feedbackKind || !feedbackTitle.trim() || !feedbackBody.trim()) return
+    setFeedbackBusy(true)
+    setFeedbackResult(null)
+    const result = await submitFeedback({
+      kind: feedbackKind,
+      title: feedbackTitle.trim(),
+      body: feedbackBody.trim(),
+      email: feedbackEmail.trim() || undefined,
+      version: appVersion,
+      platform: navigator.userAgent
+    })
+    setFeedbackResult(result)
+    setFeedbackBusy(false)
+    if (result.ok) {
+      setFeedbackTitle('')
+      setFeedbackBody('')
+      setFeedbackEmail('')
+    }
+  }
+
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
     if (!audio || !current) return
@@ -580,6 +644,29 @@ export default function App() {
     }, new Map<string, number>())]
       .sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
 
+  // Covers for the home stat cards. YouTube artwork makes the numbers feel like
+  // actual listening instead of four empty figures.
+  const coversOf = (tracks: Track[], limit = 4) => {
+    const seen = new Set<string>()
+    const art: string[] = []
+    for (const track of tracks) {
+      const src = coverUrl(track)
+      if (!src || seen.has(src)) continue
+      seen.add(src)
+      art.push(src)
+      if (art.length >= limit) break
+    }
+    return art
+  }
+  const topArtistTracks =
+    topArtist === '—'
+      ? []
+      : history.filter((track) => (track.artist?.trim() || '') === topArtist)
+  const historyCovers = coversOf(history)
+  const listeningCovers = coversOf([...history].reverse())
+  const artistCovers = coversOf(topArtistTracks.length > 0 ? topArtistTracks : history, 1)
+  const savedCovers = coversOf(library)
+
   const activity = (() => {
     const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
     const days = Array.from({ length: 7 }, (_, index) => {
@@ -609,6 +696,88 @@ export default function App() {
   const dockTrack = current ?? status?.nowPlaying ?? null
   const dockSource = current ? 'Browser' : dockTrack ? 'Discord' : null
   const updateInfo = updateMessage(update)
+
+  // The titlebar menu is a command menu, not a second copy of the sidebar:
+  // searchable actions, grouped by intent, with the app-level toggles OpenCode
+  // keeps in its palette.
+  const openView = (next: View) => {
+    setView(next)
+    if (next !== 'playlists') setSelectedPlaylist(null)
+  }
+  type MenuAction = {
+    id: string
+    group: string
+    label: string
+    icon: ReactNode
+    hint?: string
+    run: () => void
+  }
+  const menuActions: MenuAction[] = [
+    ...NAV.map((item) => ({
+      id: item.id,
+      group: item.id === 'status' || item.id === 'about' || item.id === 'support'
+        ? 'Workspace'
+        : 'Go to',
+      label: item.label,
+      icon: item.icon,
+      run: () => openView(item.id)
+    })),
+    {
+      id: 'settings',
+      group: 'Workspace',
+      label: 'Settings',
+      icon: <SettingsIcon size={15} />,
+      run: () => openView('settings')
+    },
+    {
+      id: 'theme',
+      group: 'App',
+      label: `Theme: ${theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'}`,
+      icon: theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />,
+      hint: 'Switch',
+      run: () => setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')
+    },
+    {
+      id: 'updates',
+      group: 'App',
+      label: 'Check for updates',
+      icon: <RefreshCw size={15} />,
+      hint: `v${appVersion}`,
+      run: () => {
+        setView('support')
+        setSelectedPlaylist(null)
+        void window.shen?.checkForUpdates()
+      }
+    },
+    {
+      id: 'sidebar',
+      group: 'App',
+      label: sidebarOpen ? 'Hide sidebar' : 'Show sidebar',
+      icon: sidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />,
+      hint: 'Layout',
+      run: () => setSidebarOpen((open) => !open)
+    },
+    ...(user
+      ? [
+          {
+            id: 'signout',
+            group: 'App',
+            label: 'Sign out',
+            icon: <LogOut size={15} />,
+            run: () => void signOut()
+          }
+        ]
+      : [])
+  ]
+  const menuTerm = menuQuery.trim().toLowerCase()
+  const visibleActions = menuTerm
+    ? menuActions.filter(
+        (action) =>
+          action.label.toLowerCase().includes(menuTerm) ||
+          action.group.toLowerCase().includes(menuTerm)
+      )
+    : menuActions
+  const menuGroups = [...new Set(visibleActions.map((action) => action.group))]
 
   const renderTrackList = (
     list: Track[],
@@ -677,46 +846,76 @@ export default function App() {
       {menuOpen ? (
         <>
           <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
-          <div className="appmenu" role="menu">
-            {NAV.map((item) => (
-              <button
-                key={item.id}
-                role="menuitem"
-                className={view === item.id ? 'active' : ''}
-                onClick={() => {
-                  setView(item.id)
-                  if (item.id !== 'playlists') setSelectedPlaylist(null)
-                  setMenuOpen(false)
+          <div className="cmdk" role="dialog" aria-modal="true" aria-label="Command menu">
+            <div className="cmdk-search">
+              <SearchIcon size={14} />
+              <input
+                autoFocus
+                value={menuQuery}
+                placeholder="Search actions…"
+                aria-label="Search actions"
+                onChange={(event) => {
+                  setMenuQuery(event.target.value)
+                  setMenuIndex(0)
                 }}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
-            ))}
-            <div className="appmenu-sep" />
-            <button
-              role="menuitem"
-              className={view === 'settings' ? 'active' : ''}
-              onClick={() => {
-                setView('settings')
-                setSelectedPlaylist(null)
-                setMenuOpen(false)
-              }}
-            >
-              <SettingsIcon size={15} />
-              <span>Settings</span>
-            </button>
-            <div className="appmenu-sep" />
-            <button
-              role="menuitem"
-              onClick={() => {
-                setSidebarOpen((v) => !v)
-                setMenuOpen(false)
-              }}
-            >
-              {sidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
-              <span>{sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}</span>
-            </button>
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault()
+                    setMenuIndex((index) =>
+                      visibleActions.length === 0 ? 0 : (index + 1) % visibleActions.length
+                    )
+                  } else if (event.key === 'ArrowUp') {
+                    event.preventDefault()
+                    setMenuIndex((index) =>
+                      visibleActions.length === 0
+                        ? 0
+                        : (index - 1 + visibleActions.length) % visibleActions.length
+                    )
+                  } else if (event.key === 'Enter') {
+                    event.preventDefault()
+                    visibleActions[menuIndex]?.run()
+                    setMenuOpen(false)
+                  }
+                }}
+              />
+              <kbd>esc</kbd>
+            </div>
+
+            <div className="cmdk-list">
+              {menuGroups.map((group) => (
+                <div className="cmdk-group" key={group}>
+                  <div className="cmdk-group-label">{group}</div>
+                  {visibleActions
+                    .filter((action) => action.group === group)
+                    .map((action) => {
+                      const index = visibleActions.indexOf(action)
+                      return (
+                        <button
+                          key={action.id}
+                          className={`cmdk-item${index === menuIndex ? ' active' : ''}`}
+                          onMouseMove={() => setMenuIndex(index)}
+                          onClick={() => {
+                            action.run()
+                            setMenuOpen(false)
+                          }}
+                        >
+                          <span className="cmdk-icon">{action.icon}</span>
+                          <span className="cmdk-label">{action.label}</span>
+                          {action.hint ? <span className="cmdk-hint">{action.hint}</span> : null}
+                        </button>
+                      )
+                    })}
+                </div>
+              ))}
+              {visibleActions.length === 0 ? (
+                <div className="cmdk-empty">No actions match “{menuQuery}”.</div>
+              ) : null}
+            </div>
+
+            <div className="cmdk-foot">
+              <span>Shen v{appVersion}</span>
+              <span>{visibleActions.length} actions</span>
+            </div>
           </div>
         </>
       ) : null}
@@ -933,24 +1132,40 @@ export default function App() {
 
               <div className="stat-grid">
                 <div className="stat-card">
-                  <ListMusic size={14} />
-                  <span>Songs played</span>
-                  <b>{history.length}</b>
+                  <div className="stat-copy">
+                    <span className="stat-label">
+                      <ListMusic size={13} /> Songs played
+                    </span>
+                    <b>{history.length}</b>
+                  </div>
+                  <StatArt covers={historyCovers} fallback={<ListMusic size={15} />} />
                 </div>
                 <div className="stat-card">
-                  <Clock3 size={14} />
-                  <span>Listening time</span>
-                  <b>{formatSpan(listeningSeconds)}</b>
+                  <div className="stat-copy">
+                    <span className="stat-label">
+                      <Clock3 size={13} /> Listening time
+                    </span>
+                    <b>{formatSpan(listeningSeconds)}</b>
+                  </div>
+                  <StatArt covers={listeningCovers} fallback={<Clock3 size={15} />} />
                 </div>
                 <div className="stat-card">
-                  <Mic2 size={14} />
-                  <span>Top artist</span>
-                  <b title={topArtist}>{topArtist}</b>
+                  <div className="stat-copy">
+                    <span className="stat-label">
+                      <Mic2 size={13} /> Top artist
+                    </span>
+                    <b title={topArtist}>{topArtist}</b>
+                  </div>
+                  <StatArt covers={artistCovers} fallback={<Mic2 size={15} />} />
                 </div>
                 <div className="stat-card">
-                  <LibraryBig size={14} />
-                  <span>Saved tracks</span>
-                  <b>{library.length}</b>
+                  <div className="stat-copy">
+                    <span className="stat-label">
+                      <LibraryBig size={13} /> Saved tracks
+                    </span>
+                    <b>{library.length}</b>
+                  </div>
+                  <StatArt covers={savedCovers} fallback={<LibraryBig size={15} />} />
                 </div>
               </div>
 
@@ -1198,10 +1413,10 @@ export default function App() {
             <div className="nflive">
               {nfError ? (
                 <div className="nf-error">
-                  <div className="nf-error-title">Northflank isn’t connected</div>
+                  <div className="nf-error-title">Status is offline</div>
                   <p>
-                    Add <code>NORTHFLANK_API_TOKEN</code> to <code>.env</code>, or run{' '}
-                    <code>northflank login</code> on this machine.
+                    Live service health comes from the hosted Shen backend. Its metrics endpoint
+                    isn’t reachable right now, so there’s nothing to show yet.
                   </p>
                   <p className="muted">{nfError}</p>
                   <button className="btn small" onClick={() => void loadNf()} disabled={nfLoading}>
@@ -1247,21 +1462,23 @@ export default function App() {
                       <div>
                         <span>Source</span>
                         <b>
-                          {nf.source === 'cli'
-                            ? 'CLI session'
-                            : nf.source === 'dotenv'
-                              ? '.env token'
-                              : 'env token'}
+                          {nf.source === 'backend'
+                            ? 'Hosted API'
+                            : nf.source === 'cli'
+                              ? 'CLI session'
+                              : nf.source === 'dotenv'
+                                ? '.env token'
+                                : 'env token'}
                         </b>
                       </div>
                     </div>
                   </div>
 
                   <div className="spark-grid">
-                    <SparkCard label="CPU" metric={nf.metrics.cpu} />
-                    <SparkCard label="Memory" metric={nf.metrics.memory} />
-                    <SparkCard label="Network in" metric={nf.metrics.networkIngress} />
-                    <SparkCard label="Network out" metric={nf.metrics.networkEgress} />
+                    <SparkCard label="CPU" metric={nf.metrics.cpu} tone="green" />
+                    <SparkCard label="Memory" metric={nf.metrics.memory} tone="green" />
+                    <SparkCard label="Network in" metric={nf.metrics.networkIngress} tone="green" />
+                    <SparkCard label="Network out" metric={nf.metrics.networkEgress} tone="red" />
                   </div>
 
                   <div className="nf-foot">
@@ -1376,11 +1593,10 @@ export default function App() {
               </div>
 
               <div className="support-grid">
-                <a
+                <button
+                  type="button"
                   className="support-card support-link"
-                  href="https://github.com/vihanga-nimsara/shen-app/issues/new?template=bug_report.yml"
-                  target="_blank"
-                  rel="noreferrer"
+                  onClick={() => openFeedback('bug')}
                 >
                   <span className="support-icon">
                     <Bug size={16} />
@@ -1388,16 +1604,15 @@ export default function App() {
                   <span className="support-copy">
                     <span className="setting-name">Report a bug</span>
                     <span className="setting-desc">
-                      Something broken? Open an issue with your version and logs.
+                      Something broken? Tell us what happened and we’ll look into it.
                     </span>
                   </span>
                   <ArrowUpRight size={14} className="support-arrow" />
-                </a>
-                <a
+                </button>
+                <button
+                  type="button"
                   className="support-card support-link"
-                  href="https://github.com/vihanga-nimsara/shen-app/issues/new?template=feature_request.yml"
-                  target="_blank"
-                  rel="noreferrer"
+                  onClick={() => openFeedback('feature')}
                 >
                   <span className="support-icon">
                     <Lightbulb size={16} />
@@ -1409,11 +1624,11 @@ export default function App() {
                     </span>
                   </span>
                   <ArrowUpRight size={14} className="support-arrow" />
-                </a>
+                </button>
               </div>
 
               <div className="support-foot">
-                Issues and releases live on github.com/vihanga-nimsara/shen-app
+                Feedback goes straight to the Shen team. GitHub issues still work too.
               </div>
             </div>
           ) : null}
@@ -1675,6 +1890,127 @@ export default function App() {
         </footer>
       </main>
       </div>
+
+      {feedbackKind ? (
+        <div className="modal-backdrop" onClick={closeFeedback}>
+          <form
+            className="feedback-dialog"
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={sendFeedback}
+          >
+            <div className="feedback-head">
+              <div>
+                <h2>{feedbackKind === 'bug' ? 'Report a bug' : 'Request a feature'}</h2>
+                <p>
+                  {feedbackKind === 'bug'
+                    ? 'What happened, and what did you expect instead?'
+                    : 'What would you like Shen to do?'}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="feedback-close"
+                onClick={closeFeedback}
+                disabled={feedbackBusy}
+                aria-label="Close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {feedbackResult?.ok ? (
+              <div className="feedback-done">
+                <ShieldCheck size={18} />
+                <div>
+                  <b>Thanks — message sent.</b>
+                  <p>We read every report.</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <label className="feedback-field">
+                  <span>Title</span>
+                  <input
+                    autoFocus
+                    required
+                    maxLength={120}
+                    value={feedbackTitle}
+                    onChange={(event) => setFeedbackTitle(event.target.value)}
+                    placeholder={
+                      feedbackKind === 'bug' ? 'Queue stopped updating' : 'Sleep timer for Discord'
+                    }
+                  />
+                </label>
+                <label className="feedback-field">
+                  <span>Details</span>
+                  <textarea
+                    required
+                    rows={5}
+                    maxLength={4000}
+                    value={feedbackBody}
+                    onChange={(event) => setFeedbackBody(event.target.value)}
+                    placeholder="Add the steps, what you saw, and anything else that helps."
+                  />
+                </label>
+                <label className="feedback-field">
+                  <span>
+                    Email <em>optional</em>
+                  </span>
+                  <input
+                    type="email"
+                    value={feedbackEmail}
+                    onChange={(event) => setFeedbackEmail(event.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </label>
+
+                {feedbackResult && !feedbackResult.ok ? (
+                  <div className="feedback-error">
+                    <span>{feedbackResult.message}</span>
+                    {feedbackResult.issueUrl ? (
+                      <a href={feedbackResult.issueUrl} target="_blank" rel="noreferrer">
+                        Open a GitHub issue instead
+                      </a>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="feedback-actions">
+                  <span className="muted">Shen v{appVersion}</span>
+                  <div className="feedback-buttons">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={closeFeedback}
+                      disabled={feedbackBusy}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={feedbackBusy || !feedbackTitle.trim() || !feedbackBody.trim()}
+                    >
+                      {feedbackBusy ? <Classic className="row-loader" /> : null} Send
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {feedbackResult?.ok ? (
+              <div className="feedback-actions">
+                <span className="muted">Shen v{appVersion}</span>
+                <div className="feedback-buttons">
+                  <Button variant="outline" size="sm" onClick={closeFeedback}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </form>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -2070,7 +2406,34 @@ function statusLabel(service: NfLive['service']): string {
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
-function SparkCard({ label, metric }: { label: string; metric: NfMetric | null }) {
+function StatArt({ covers, fallback }: { covers: string[]; fallback: ReactNode }) {
+  if (covers.length === 0) return <span className="stat-art is-empty">{fallback}</span>
+  return (
+    <span className={`stat-art count-${Math.min(covers.length, 4)}`} aria-hidden="true">
+      {covers.slice(0, 4).map((src) => (
+        <img
+          key={src}
+          src={src}
+          alt=""
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.style.visibility = 'hidden'
+          }}
+        />
+      ))}
+    </span>
+  )
+}
+
+function SparkCard({
+  label,
+  metric,
+  tone = 'neutral'
+}: {
+  label: string
+  metric: NfMetric | null
+  tone?: 'green' | 'red' | 'neutral'
+}) {
   if (!metric || metric.points.length === 0) {
     return (
       <div className="spark-card">
@@ -2086,11 +2449,22 @@ function SparkCard({ label, metric }: { label: string; metric: NfMetric | null }
   const min = Math.min(...values)
   const max = Math.max(...values)
   const last = values[values.length - 1]
-  // Normalise to the window so small real variations stay visible; the exact
-  // min/max are printed underneath.
-  const span = max - min || Math.max(max, 1)
-  const stride = Math.max(1, Math.ceil(metric.points.length / 56))
-  const bars = metric.points.filter((_, i) => i % stride === 0)
+
+  // Resample to a fixed bar count so every card has the same rhythm, then
+  // scale from zero. Both matter: variable counts and min-based heights made
+  // the bars look jagged and uneven even when the data was stable.
+  const BAR_COUNT = 44
+  const bars = Array.from({ length: BAR_COUNT }, (_, index) => {
+    const start = Math.floor((index * metric.points.length) / BAR_COUNT)
+    const end = Math.max(
+      start + 1,
+      Math.floor(((index + 1) * metric.points.length) / BAR_COUNT)
+    )
+    const slice = metric.points.slice(start, end)
+    const value = slice.reduce((total, point) => total + point.v, 0) / slice.length
+    return { t: slice[0].t, v: value }
+  })
+  const ceiling = Math.max(...bars.map((point) => point.v), 1)
   const unit = metric.unit === 'pct' ? '%' : metric.unit
   const fmt = (value: number) => {
     if (Math.abs(value) >= 100) return value.toFixed(0)
@@ -2107,12 +2481,12 @@ function SparkCard({ label, metric }: { label: string; metric: NfMetric | null }
           <small>{unit}</small>
         </span>
       </div>
-      <div className="spikes" aria-hidden="true">
+      <div className={`spikes ${tone}`} aria-hidden="true">
         {bars.map((point, i) => {
-          const height = 8 + ((point.v - min) / span) * 92
+          const height = Math.max(4, Math.min(100, (point.v / ceiling) * 100))
           return (
             <span
-              key={point.t}
+              key={`${point.t}-${i}`}
               className={`spike${i === bars.length - 1 ? ' last' : ''}`}
               style={{ height: `${height}%`, animationDelay: `${Math.min(i, 24) * 7}ms` }}
               title={`${new Date(point.t).toLocaleTimeString()} · ${fmt(point.v)}${unit}`}
@@ -2123,7 +2497,7 @@ function SparkCard({ label, metric }: { label: string; metric: NfMetric | null }
       <div className="spark-foot">
         <span>min {fmt(min)}{unit}</span>
         <span>max {fmt(max)}{unit}</span>
-        <span>{bars.length} pts</span>
+        <span>{metric.points.length} pts</span>
       </div>
     </div>
   )

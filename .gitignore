@@ -13,4 +13,5 @@ pack-win.log
 dist-win.log
 screenshot*.png
 shot*.png
+supabase/.temp/
 .DS_Store

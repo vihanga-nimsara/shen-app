@@ -4,10 +4,14 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import electron from 'vite-plugin-electron'
 import { fileURLToPath, URL } from 'node:url'
+import { readFileSync } from 'node:fs'
 import { getNorthflankLive } from './src/shared/nf-live'
 
 const root = fileURLToPath(new URL('./src/renderer', import.meta.url))
 const envDir = fileURLToPath(new URL('.', import.meta.url))
+const appVersion = JSON.parse(
+  readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8')
+).version as string
 
 // Strip Domain/Secure/SameSite from backend cookies so they stick to the local
 // renderer origin instead of the public backend domain.
@@ -57,7 +61,8 @@ export default defineConfig(({ mode }) => {
     define: {
       // Lets the renderer start Discord OAuth on the backend origin, which is
       // where the hosted callback lands (see loginUrl in renderer/api.ts).
-      'import.meta.env.VITE_SHEN_API_URL': JSON.stringify(apiTarget)
+      'import.meta.env.VITE_SHEN_API_URL': JSON.stringify(apiTarget),
+      __APP_VERSION__: JSON.stringify(appVersion)
     },
     // The renderer always calls same-origin /api routes; this proxy forwards
     // them to the hosted Shen backend so cookies stay first-party.
@@ -80,20 +85,6 @@ export default defineConfig(({ mode }) => {
             build: {
               outDir: fileURLToPath(new URL('./dist-electron/main', import.meta.url)),
               rollupOptions: { external: ['electron', 'electron-updater'] }
-            }
-          }
-        },
-        {
-          entry: fileURLToPath(new URL('./src/preload/index.ts', import.meta.url)),
-          vite: {
-            build: {
-              outDir: fileURLToPath(new URL('./dist-electron/preload', import.meta.url)),
-              lib: {
-                entry: fileURLToPath(new URL('./src/preload/index.ts', import.meta.url)),
-                formats: ['cjs'],
-                fileName: () => 'index.cjs'
-              },
-              rollupOptions: { external: ['electron'] }
             }
           }
         }

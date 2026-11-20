@@ -38,5 +38,5 @@ export interface NfLive {
   metrics: NfMetrics
   fetchedAt: string
   duration: number
-  source: 'env' | 'dotenv' | 'cli'
+  source: 'env' | 'dotenv' | 'cli' | 'backend'
 }

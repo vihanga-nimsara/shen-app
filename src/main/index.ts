@@ -15,6 +15,11 @@ const { autoUpdater } = require('electron-updater') as typeof import('electron-u
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Opt-in DevTools protocol endpoint for automation/screenshots in development.
+if (process.env.SHEN_DEBUG_PORT) {
+  app.commandLine.appendSwitch('remote-debugging-port', process.env.SHEN_DEBUG_PORT)
+}
+
 process.env.DIST_ELECTRON = path.join(__dirname, '..')
 process.env.DIST = path.join(process.env.DIST_ELECTRON, '..', 'dist')
 

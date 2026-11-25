@@ -45,7 +45,8 @@ import {
   Bug,
   Lightbulb,
   Sun,
-  Moon
+  Moon,
+  CircleUserRound
 } from 'lucide-react'
 import {
   audioUrl,
@@ -208,6 +209,24 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('shen-sidebar') !== 'closed')
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuIndex, setMenuIndex] = useState(0)
+  const [accountMenu, setAccountMenu] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!accountMenu) return
+    const close = (event: PointerEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) setAccountMenu(false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAccountMenu(false)
+    }
+    window.addEventListener('pointerdown', close)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', close)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [accountMenu])
 
   useEffect(() => {
     localStorage.setItem('shen-sidebar', sidebarOpen ? 'open' : 'closed')
@@ -965,22 +984,106 @@ export default function App() {
         ) : null}
         <div className="sidebar-footer">
           {user ? (
-            <div className="account-card">
-              <img
-                className="account-avatar"
-                src={user.avatar ?? undefined}
-                alt=""
-                onError={(e) => { e.currentTarget.style.visibility = 'hidden' }}
-              />
-              <div className="account-meta">
-                <div className="account-name">{user.global_name || user.username || 'Shen user'}</div>
-                <div className="muted account-provider">
-                  <DiscordIcon width={9} height={9} /> Signed in
+            <div className="account-wrap" ref={accountMenuRef}>
+              <button
+                className={`account-card${accountMenu ? ' open' : ''}`}
+                onClick={() => setAccountMenu((value) => !value)}
+                aria-haspopup="menu"
+                aria-expanded={accountMenu}
+                title="Account menu"
+              >
+                <span className="account-avatar-wrap">
+                  <img
+                    className="account-avatar"
+                    src={user.avatar ?? undefined}
+                    alt=""
+                    onError={(e) => { e.currentTarget.style.visibility = 'hidden' }}
+                  />
+                  <span className="account-presence" aria-hidden="true" />
+                </span>
+                <div className="account-meta">
+                  <div className="account-name">{user.global_name || user.username || 'Shen user'}</div>
+                  <div className="muted account-provider">
+                    <DiscordIcon width={9} height={9} /> Signed in
+                  </div>
                 </div>
-              </div>
-              <button className="btn link" onClick={signOut} title="Sign out">
-                <LogOut size={13} />
               </button>
+              {accountMenu ? (
+                <div className="account-menu" role="menu">
+                  <div className="account-menu-head">
+                    <span className="account-menu-avatar">
+                      <img
+                        src={user.avatar ?? undefined}
+                        alt=""
+                        onError={(e) => { e.currentTarget.style.visibility = 'hidden' }}
+                      />
+                      <span className="account-presence" aria-hidden="true" />
+                    </span>
+                    <span className="account-menu-copy">
+                      <span className="account-menu-name">
+                        {user.global_name || user.username || 'Shen user'}
+                      </span>
+                      <span className="account-menu-sub">
+                        {user.username ? `@${user.username}` : 'Signed in with Discord'}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="account-menu-sep" />
+                  <button
+                    className="account-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setAccountMenu(false)
+                      if (user.id) {
+                        window.open(
+                          `https://discord.com/users/${user.id}`,
+                          '_blank',
+                          'noopener,noreferrer'
+                        )
+                      }
+                    }}
+                  >
+                    <CircleUserRound size={16} />
+                    <span>My profile</span>
+                  </button>
+                  <button
+                    className="account-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setAccountMenu(false)
+                      openView('settings')
+                    }}
+                  >
+                    <SettingsIcon size={16} />
+                    <span>Settings</span>
+                  </button>
+                  <button
+                    className="account-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setAccountMenu(false)
+                      setView('support')
+                      setSelectedPlaylist(null)
+                      void window.shen?.checkForUpdates()
+                    }}
+                  >
+                    <RefreshCw size={16} />
+                    <span>Check for updates</span>
+                  </button>
+                  <div className="account-menu-sep" />
+                  <button
+                    className="account-menu-item destructive"
+                    role="menuitem"
+                    onClick={() => {
+                      setAccountMenu(false)
+                      signOut()
+                    }}
+                  >
+                    <LogOut size={16} />
+                    <span>Sign out</span>
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : (
             <button className="signin" onClick={signIn} title="Sign in with Discord">

@@ -1,6 +1,6 @@
 {
   "name": "shen-app",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "description": "Shen — a desktop music companion with a real UI",
@@ -27,7 +27,8 @@
     "release:win": "npm run build && electron-builder --win nsis --publish always"
   },
   "dependencies": {
-    "electron-updater": "^6.8.11"
+    "electron-updater": "^6.8.11",
+    "framer-motion": "^14.14.0"
   },
   "devDependencies": {
     "@fontsource-variable/geist": "^5.3.0",

@@ -85,11 +85,17 @@ import {
   type User
 } from './api'
 import { getNorthflankLive, type NfLive, type NfMetric } from './nf'
+import { devStatus } from './dev-data'
 import { submitFeedback, type FeedbackKind, type FeedbackResult } from './feedback'
 import type { UpdateStatus } from '../../shared/update-types'
-import { Classic } from './components/classic'
+import { Ring } from './components/ring'
 import { DiscordIcon } from './components/discord-icon'
 import SoftAurora from './components/SoftAurora'
+import { FreelancerStatsCard } from './components/ui/freelancer-stats-card'
+import {
+  ListeningActivity,
+  type ListeningLevel
+} from './components/ui/listening-activity'
 import { Alert, AlertAction, AlertDescription } from './components/ui/alert'
 import { Button } from './components/ui/button'
 
@@ -109,6 +115,10 @@ type View =
 type Theme = 'dark' | 'light' | 'system'
 
 const SCALES = [90, 100, 110, 125]
+
+// One bar count for every sparkline in the app, so the connection strip, the
+// Status cards and the Now Playing card all share the same rhythm.
+const SPIKE_SLOTS = 44
 
 const NAV: { id: View; label: string; icon: ReactNode }[] = [
   { id: 'home', label: 'Home', icon: <House size={15} /> },
@@ -156,7 +166,9 @@ export default function App() {
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
   const [newPlaylist, setNewPlaylist] = useState('')
 
-  const [status, setStatus] = useState<Status | null>(null)
+  const [status, setStatus] = useState<Status | null>(() =>
+    import.meta.env.DEV ? devStatus() : null
+  )
   const [user, setUser] = useState<User | null>(null)
 
   const [current, setCurrent] = useState<Track | null>(null)
@@ -195,7 +207,6 @@ export default function App() {
   })
   const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('shen-sidebar') !== 'closed')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [menuQuery, setMenuQuery] = useState('')
   const [menuIndex, setMenuIndex] = useState(0)
 
   useEffect(() => {
@@ -212,10 +223,7 @@ export default function App() {
   }, [menuOpen])
 
   useEffect(() => {
-    if (menuOpen) {
-      setMenuQuery('')
-      setMenuIndex(0)
-    }
+    if (menuOpen) setMenuIndex(0)
   }, [menuOpen])
 
   useEffect(() => {
@@ -243,7 +251,10 @@ export default function App() {
     setFavorites(data.favorites)
   }, [])
   const refreshUser = useCallback(async () => setUser(await getMe()), [])
-  const refreshStatus = useCallback(async () => setStatus(await getStatus()), [])
+  const refreshStatus = useCallback(async () => {
+    const next = await getStatus()
+    setStatus(import.meta.env.DEV ? devStatus(next) : next)
+  }, [])
 
   const loadNf = useCallback(async () => {
     setNfLoading(true)
@@ -626,12 +637,27 @@ export default function App() {
   const playlist = playlists.find((p) => p.id === selectedPlaylist) ?? null
 
   // Most recently played songs, shown in the sidebar like OpenCode's recents.
-  const recentTracks = (status?.history ?? [])
-    .filter(
-      (track, index, list) =>
-        list.findIndex((other) => trackKey(other) === trackKey(track)) === index
-    )
-    .slice(0, 5)
+  // The list fills whatever height is left between the nav and the account
+  // card, so it is sliced to the rows that actually fit instead of scrolling.
+  const recentTracks = (status?.history ?? []).filter(
+    (track, index, list) =>
+      list.findIndex((other) => trackKey(other) === trackKey(track)) === index
+  )
+  const recentListRef = useRef<HTMLDivElement>(null)
+  const [recentSlots, setRecentSlots] = useState(8)
+
+  useEffect(() => {
+    const el = recentListRef.current
+    if (!el) return
+    const rowHeight = 44
+    const gap = 1
+    const measure = () =>
+      setRecentSlots(Math.max(1, Math.floor((el.clientHeight + gap) / (rowHeight + gap))))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [sidebarOpen, view, recentTracks.length])
 
   const history = status?.history ?? []
 
@@ -662,87 +688,85 @@ export default function App() {
     topArtist === '—'
       ? []
       : history.filter((track) => (track.artist?.trim() || '') === topArtist)
-  const historyCovers = coversOf(history)
-  const listeningCovers = coversOf([...history].reverse())
   const artistCovers = coversOf(topArtistTracks.length > 0 ? topArtistTracks : history, 1)
   const savedCovers = coversOf(library)
 
-  const activity = (() => {
-    const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
-    const days = Array.from({ length: 7 }, (_, index) => {
-      const date = new Date()
-      date.setHours(0, 0, 0, 0)
-      date.setDate(date.getDate() - (6 - index))
-      const start = date.getTime()
-      return {
-        label: weekday.format(date),
-        start,
-        end: start + 86_400_000,
-        count: 0
-      }
-    })
+  // A year of daily plays for the home heatmap. Days run Sunday→Saturday so
+  // the columns line up; today and the rest of the week simply have no plays.
+  const listeningDays = (() => {
+    const keyOf = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+        date.getDate()
+      ).padStart(2, '0')}`
+    const counts = new Map<string, number>()
     for (const track of history) {
       if (!track.playedAt) continue
-      const day = days.find((entry) => track.playedAt! >= entry.start && track.playedAt! < entry.end)
-      if (day) day.count += 1
+      const key = keyOf(new Date(track.playedAt))
+      counts.set(key, (counts.get(key) ?? 0) + 1)
     }
-    return days
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const end = new Date(today)
+    end.setDate(end.getDate() + (6 - end.getDay()))
+    const start = new Date(end)
+    start.setDate(start.getDate() - (53 * 7 - 1))
+    const days: { date: string; count: number }[] = []
+    for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+      const key = keyOf(cursor)
+      days.push({ date: key, count: counts.get(key) ?? 0 })
+    }
+    const max = Math.max(1, ...days.map((day) => day.count))
+    return days.map((day) => ({
+      ...day,
+      level: (day.count === 0
+        ? 0
+        : Math.min(4, Math.ceil((day.count / max) * 4))) as ListeningLevel
+    }))
   })()
-  const activityMax = Math.max(1, ...activity.map((day) => day.count))
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const greetingMark = greetingEmoji(new Date())
 
   const dockTrack = current ?? status?.nowPlaying ?? null
   const dockSource = current ? 'Browser' : dockTrack ? 'Discord' : null
   const updateInfo = updateMessage(update)
+  const statusGuild =
+    status?.guilds?.find((entry) => entry.inVoice) ??
+    status?.guilds?.find((entry) => entry.id === status.guildId) ??
+    null
 
-  // The titlebar menu is a command menu, not a second copy of the sidebar:
-  // searchable actions, grouped by intent, with the app-level toggles OpenCode
-  // keeps in its palette.
+  // The titlebar menu is a short command list, not a second copy of the
+  // sidebar. Only the seven places people jump between live here plus the
+  // app-level actions and Settings; Status, About and Support stay in the sidebar.
+  const PALETTE_VIEWS: View[] = ['home', 'search', 'now', 'queue', 'library', 'playlists', 'favorites']
   const openView = (next: View) => {
     setView(next)
     if (next !== 'playlists') setSelectedPlaylist(null)
   }
   type MenuAction = {
     id: string
-    group: string
     label: string
     icon: ReactNode
-    hint?: string
     run: () => void
   }
   const menuActions: MenuAction[] = [
-    ...NAV.map((item) => ({
+    ...NAV.filter((item) => PALETTE_VIEWS.includes(item.id)).map((item) => ({
       id: item.id,
-      group: item.id === 'status' || item.id === 'about' || item.id === 'support'
-        ? 'Workspace'
-        : 'Go to',
       label: item.label,
       icon: item.icon,
       run: () => openView(item.id)
     })),
     {
-      id: 'settings',
-      group: 'Workspace',
-      label: 'Settings',
-      icon: <SettingsIcon size={15} />,
-      run: () => openView('settings')
-    },
-    {
       id: 'theme',
-      group: 'App',
       label: `Theme: ${theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'}`,
       icon: theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />,
-      hint: 'Switch',
       run: () => setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')
     },
     {
       id: 'updates',
-      group: 'App',
       label: 'Check for updates',
       icon: <RefreshCw size={15} />,
-      hint: `v${appVersion}`,
       run: () => {
         setView('support')
         setSelectedPlaylist(null)
@@ -750,18 +774,21 @@ export default function App() {
       }
     },
     {
+      id: 'settings',
+      label: 'Settings',
+      icon: <SettingsIcon size={15} />,
+      run: () => openView('settings')
+    },
+    {
       id: 'sidebar',
-      group: 'App',
       label: sidebarOpen ? 'Hide sidebar' : 'Show sidebar',
       icon: sidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />,
-      hint: 'Layout',
       run: () => setSidebarOpen((open) => !open)
     },
     ...(user
       ? [
           {
             id: 'signout',
-            group: 'App',
             label: 'Sign out',
             icon: <LogOut size={15} />,
             run: () => void signOut()
@@ -769,15 +796,7 @@ export default function App() {
         ]
       : [])
   ]
-  const menuTerm = menuQuery.trim().toLowerCase()
-  const visibleActions = menuTerm
-    ? menuActions.filter(
-        (action) =>
-          action.label.toLowerCase().includes(menuTerm) ||
-          action.group.toLowerCase().includes(menuTerm)
-      )
-    : menuActions
-  const menuGroups = [...new Set(visibleActions.map((action) => action.group))]
+  const visibleActions = menuActions
 
   const renderTrackList = (
     list: Track[],
@@ -846,75 +865,48 @@ export default function App() {
       {menuOpen ? (
         <>
           <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
-          <div className="cmdk" role="dialog" aria-modal="true" aria-label="Command menu">
-            <div className="cmdk-search">
-              <SearchIcon size={14} />
-              <input
-                autoFocus
-                value={menuQuery}
-                placeholder="Search actions…"
-                aria-label="Search actions"
-                onChange={(event) => {
-                  setMenuQuery(event.target.value)
-                  setMenuIndex(0)
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'ArrowDown') {
-                    event.preventDefault()
-                    setMenuIndex((index) =>
-                      visibleActions.length === 0 ? 0 : (index + 1) % visibleActions.length
-                    )
-                  } else if (event.key === 'ArrowUp') {
-                    event.preventDefault()
-                    setMenuIndex((index) =>
-                      visibleActions.length === 0
-                        ? 0
-                        : (index - 1 + visibleActions.length) % visibleActions.length
-                    )
-                  } else if (event.key === 'Enter') {
-                    event.preventDefault()
-                    visibleActions[menuIndex]?.run()
-                    setMenuOpen(false)
-                  }
-                }}
-              />
-              <kbd>esc</kbd>
-            </div>
-
+          <div
+            className="cmdk"
+            role="dialog"
+            aria-modal="true"
+            aria-label="App menu"
+            tabIndex={-1}
+            autoFocus
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown') {
+                event.preventDefault()
+                setMenuIndex((index) =>
+                  visibleActions.length === 0 ? 0 : (index + 1) % visibleActions.length
+                )
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault()
+                setMenuIndex((index) =>
+                  visibleActions.length === 0
+                    ? 0
+                    : (index - 1 + visibleActions.length) % visibleActions.length
+                )
+              } else if (event.key === 'Enter') {
+                event.preventDefault()
+                visibleActions[menuIndex]?.run()
+                setMenuOpen(false)
+              }
+            }}
+          >
             <div className="cmdk-list">
-              {menuGroups.map((group) => (
-                <div className="cmdk-group" key={group}>
-                  <div className="cmdk-group-label">{group}</div>
-                  {visibleActions
-                    .filter((action) => action.group === group)
-                    .map((action) => {
-                      const index = visibleActions.indexOf(action)
-                      return (
-                        <button
-                          key={action.id}
-                          className={`cmdk-item${index === menuIndex ? ' active' : ''}`}
-                          onMouseMove={() => setMenuIndex(index)}
-                          onClick={() => {
-                            action.run()
-                            setMenuOpen(false)
-                          }}
-                        >
-                          <span className="cmdk-icon">{action.icon}</span>
-                          <span className="cmdk-label">{action.label}</span>
-                          {action.hint ? <span className="cmdk-hint">{action.hint}</span> : null}
-                        </button>
-                      )
-                    })}
-                </div>
+              {visibleActions.map((action, index) => (
+                <button
+                  key={action.id}
+                  className={`cmdk-item${index === menuIndex ? ' active' : ''}`}
+                  onMouseMove={() => setMenuIndex(index)}
+                  onClick={() => {
+                    action.run()
+                    setMenuOpen(false)
+                  }}
+                >
+                  <span className="cmdk-icon">{action.icon}</span>
+                  <span className="cmdk-label">{action.label}</span>
+                </button>
               ))}
-              {visibleActions.length === 0 ? (
-                <div className="cmdk-empty">No actions match “{menuQuery}”.</div>
-              ) : null}
-            </div>
-
-            <div className="cmdk-foot">
-              <span>Shen v{appVersion}</span>
-              <span>{visibleActions.length} actions</span>
             </div>
           </div>
         </>
@@ -939,35 +931,39 @@ export default function App() {
         </nav>
         {recentTracks.length > 0 ? (
           <div className="sidebar-recent">
-            <div className="recent-head">Recent</div>
-            <div className="recent-list">
-              {recentTracks.map((track, index) => (
+            <div className="recent-list" ref={recentListRef}>
+              {recentTracks.slice(0, recentSlots).map((track, index) => (
                 <button
                   key={`${trackKey(track)}-${index}`}
                   className="recent-item"
                   onClick={() => play(track)}
                   title={`Play ${track.title}`}
                 >
+                  <span className="recent-art">
+                    {coverUrl(track) ? (
+                      <img
+                        src={coverUrl(track) ?? undefined}
+                        alt=""
+                        loading="lazy"
+                        onError={(event) => {
+                          event.currentTarget.style.visibility = 'hidden'
+                        }}
+                      />
+                    ) : (
+                      <Music2 size={12} />
+                    )}
+                  </span>
                   <span className="recent-copy">
                     <span className="recent-title">{track.title}</span>
-                    <span className="recent-time">{formatPlayedAt(track.playedAt)}</span>
+                    <span className="recent-meta">{track.artist || 'Unknown artist'}</span>
                   </span>
+                  <span className="recent-time">{relativePlayedAt(track.playedAt)}</span>
                 </button>
               ))}
             </div>
           </div>
         ) : null}
         <div className="sidebar-footer">
-          <button
-            className={`signin${view === 'settings' ? ' active' : ''}`}
-            onClick={() => {
-              setView('settings')
-              setSelectedPlaylist(null)
-            }}
-            title="Settings"
-          >
-            <SettingsIcon size={15} /> <span>Settings</span>
-          </button>
           {user ? (
             <div className="account-card">
               <img
@@ -994,7 +990,7 @@ export default function App() {
           {!user && signedInHint ? (
             <div className="signin-hint" role="status">
               <div className="signin-hint-head">
-                <Classic className="signin-hint-loader" />
+                <Ring className="signin-hint-loader" />
                 <strong>Finish signing in</strong>
                 <button
                   className="signin-hint-close"
@@ -1012,7 +1008,7 @@ export default function App() {
                 onClick={() => run(async () => { await refreshUser() })}
               >
                 {busy ? (
-                  <Classic className="row-loader" />
+                  <Ring className="row-loader" />
                 ) : (
                   <RefreshCw size={12} />
                 )}{' '}
@@ -1115,7 +1111,9 @@ export default function App() {
 
               <div className="home-hero">
                 <div>
-                  <h2 className="home-greeting">{greeting}</h2>
+                  <h2 className="home-greeting">
+                    {greeting} {greetingMark}
+                  </h2>
                   <p className="home-sub">Here’s what’s been playing on Shen.</p>
                 </div>
                 <div className="home-now">
@@ -1138,7 +1136,6 @@ export default function App() {
                     </span>
                     <b>{history.length}</b>
                   </div>
-                  <StatArt covers={historyCovers} fallback={<ListMusic size={15} />} />
                 </div>
                 <div className="stat-card">
                   <div className="stat-copy">
@@ -1147,7 +1144,6 @@ export default function App() {
                     </span>
                     <b>{formatSpan(listeningSeconds)}</b>
                   </div>
-                  <StatArt covers={listeningCovers} fallback={<Clock3 size={15} />} />
                 </div>
                 <div className="stat-card">
                   <div className="stat-copy">
@@ -1172,25 +1168,9 @@ export default function App() {
               <div className="home-activity">
                 <div className="home-activity-head">
                   <h2>Listening activity</h2>
-                  <span className="muted">Last 7 days</span>
+                  <span className="muted">Last 12 months</span>
                 </div>
-                <div className="activity-bars">
-                  {activity.map((day) => (
-                    <div
-                      className="activity-col"
-                      key={day.start}
-                      title={`${day.label}: ${day.count} song${day.count === 1 ? '' : 's'}`}
-                    >
-                      <div className="activity-track">
-                        <span
-                          className="activity-bar"
-                          style={{ height: `${8 + (day.count / activityMax) * 92}%` }}
-                        />
-                      </div>
-                      <span className="activity-label">{day.label}</span>
-                    </div>
-                  ))}
-                </div>
+                <ListeningActivity days={listeningDays} />
               </div>
 
               <div className="rowgroup">
@@ -1425,6 +1405,29 @@ export default function App() {
                 </div>
               ) : nf ? (
                 <>
+                  <div className="status-conn">
+                    <div className="status-conn-head">
+                      <span
+                        className={`live-dot${status?.botReady ? '' : ' idle'}`}
+                        aria-hidden="true"
+                      />
+                      <span className="with-icon">
+                        <DiscordIcon width={13} height={13} /> Discord
+                      </span>
+                      <b>{status?.botReady ? 'Online' : 'Offline'}</b>
+                      <span className="spacer" />
+                      <span className="muted">{statusGuild?.name ?? 'No server'}</span>
+                      <span className="muted">
+                        {statusGuild?.voiceChannelName ?? 'Not connected'}
+                      </span>
+                    </div>
+                    <PingChart
+                      samples={pingSamples}
+                      tone={status?.botReady ? 'green' : 'red'}
+                      compact
+                    />
+                  </div>
+
                   <div className="nf-summary">
                     <div className="nf-headline">
                       <span
@@ -1572,7 +1575,7 @@ export default function App() {
                       onClick={() => void window.shen?.checkForUpdates()}
                     >
                       {update.state === 'checking' || update.state === 'downloading' ? (
-                        <Classic className="row-loader" />
+                        <Ring className="row-loader" />
                       ) : (
                         <RefreshCw size={12} />
                       )}
@@ -1785,7 +1788,7 @@ export default function App() {
                       <div className="setting-name">Shen</div>
                       <div className="setting-desc">Desktop music companion.</div>
                     </div>
-                    <span className="setting-value">v0.1.0</span>
+                    <span className="setting-value">v{appVersion}</span>
                   </div>
                 </div>
               </div>
@@ -1869,7 +1872,7 @@ export default function App() {
                 title="Play this track in Discord"
               >
                 {discordPending === trackKey(current) ? (
-                  <Classic className="row-loader" />
+                  <Ring className="row-loader" />
                 ) : (
                   <DiscordIcon width={13} height={13} />
                 )}{' '}
@@ -1991,7 +1994,7 @@ export default function App() {
                       size="sm"
                       disabled={feedbackBusy || !feedbackTitle.trim() || !feedbackBody.trim()}
                     >
-                      {feedbackBusy ? <Classic className="row-loader" /> : null} Send
+                      {feedbackBusy ? <Ring className="row-loader" /> : null} Send
                     </Button>
                   </div>
                 </div>
@@ -2139,7 +2142,7 @@ function TrackRow({
             title="Play in Discord"
           >
             {discordBusy ? (
-              <Classic className="row-loader" />
+              <Ring className="row-loader" />
             ) : (
               <DiscordIcon width={14} height={14} />
             )}
@@ -2190,84 +2193,31 @@ function NowPlaying({
     status?.guilds?.find((entry) => entry.id === status.guildId) ??
     null
   const lastPing = pingSamples[pingSamples.length - 1]?.ms ?? null
+  const online = Boolean(status?.botReady)
+
+  // Latency bars follow the Status tab's spike rules: a fixed slot count,
+  // heights scaled from zero, and the newest sample brighter than the rest.
+  const recent = pingSamples.slice(-SPIKE_SLOTS)
+  const pings = recent.map((sample) => sample.ms)
+  const pingMax = Math.max(...pings, 1)
+  const pingMin = pings.length ? Math.min(...pings) : 0
+  const pingCeiling = spikeCeiling(pings)
+  const bars = [
+    ...Array.from({ length: SPIKE_SLOTS - recent.length }, () => ({ level: 0, ms: null as number | null })),
+    ...recent.map((sample) => ({
+      level: Math.min(1, Math.max(0.08, sample.ms / pingCeiling)),
+      ms: sample.ms
+    }))
+  ]
+
+  const queueLength = status?.queue?.length ?? 0
+  const volume = status?.volume ?? 100
+
   return (
-    <>
-      {track ? (
-        <div className="now-card">
-          {coverUrl(track) ? (
-            <img src={coverUrl(track) ?? undefined} alt="" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
-          ) : (
-            <div />
-          )}
-          <div>
-            <div className="pill">{current ? 'Browser' : 'Discord'}</div>
-            <h2>{track.title}</h2>
-            <div className="muted">
-              {track.artist || 'Unknown artist'}
-              {track.duration ? ` · ${formatDuration(track.duration)}` : ''}
-            </div>
-            <div className="button-row">
-              <button className="btn primary" onClick={() => onPlay(track)}>
-                <Play size={14} /> {playing && current ? 'Playing' : 'Play here'}
-              </button>
-              <button className="btn" onClick={onSkip}>
-                <SkipForward size={14} /> Skip in Discord
-              </button>
-              <button className="btn" onClick={onStop}>
-                <Square size={13} /> Stop Discord
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="empty">Nothing is playing. Pick a track from Search or Library.</div>
-      )}
-
-      {status ? (
-        <div className="conn-card">
-          <div className="conn-head">
-            <span className="with-icon">
-              <DiscordIcon width={13} height={13} /> Connection
-            </span>
-            <span className={`live-dot${status.botReady ? '' : ' idle'}`} aria-hidden="true" />
-            <span className="muted">{status.botReady ? 'Online' : 'Offline'}</span>
-          </div>
-          <div className="conn-grid">
-            <div>
-              <span>Server</span>
-              <b>{guild?.name ?? '—'}</b>
-            </div>
-            <div>
-              <span>Voice channel</span>
-              <b>{guild?.voiceChannelName ?? 'Not connected'}</b>
-            </div>
-            <div>
-              <span>Bot</span>
-              <b>{status.botReady ? 'Connected' : 'Offline'}</b>
-            </div>
-            <div>
-              <span>API ping</span>
-              <b>{lastPing !== null ? `${lastPing} ms` : '—'}</b>
-            </div>
-          </div>
-          <PingChart samples={pingSamples} />
-          <div className="volume-row">
-            <span className="muted">Volume</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={status.volume ?? 100}
-              onChange={(e) => onVolume(Number(e.target.value))}
-            />
-            <span className="muted">{status.volume ?? 100}</span>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="aurora">
+    <div className="now-tab">
+      <div className="now-ambient" aria-hidden="true">
         {coverUrl(track) ? (
-          <img className="aurora-cover" src={coverUrl(track) ?? undefined} alt="" aria-hidden="true" />
+          <img className="now-ambient-cover" src={coverUrl(track) ?? undefined} alt="" />
         ) : null}
         <SoftAurora
           speed={3}
@@ -2290,12 +2240,91 @@ function NowPlaying({
           intro
           lightMode={false}
         />
-        <div className="aurora-caption">
-          <span>Now playing</span>
-          <span className="muted">Shen · zagan.space</span>
-        </div>
+        <div className="now-veil" />
       </div>
-    </>
+
+      <div className="now-inner">
+        {track ? (
+          <div className="now-card">
+            {coverUrl(track) ? (
+              <img src={coverUrl(track) ?? undefined} alt="" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
+            ) : (
+              <div />
+            )}
+            <div>
+              <div className="pill">{current ? 'Browser' : 'Discord'}</div>
+              <h2>{track.title}</h2>
+              <div className="muted">
+                {track.artist || 'Unknown artist'}
+                {track.duration ? ` · ${formatDuration(track.duration)}` : ''}
+              </div>
+              <div className="button-row">
+                <button className="btn primary" onClick={() => onPlay(track)}>
+                  <Play size={14} /> {playing && current ? 'Playing' : 'Play here'}
+                </button>
+                <button className="btn" onClick={onSkip}>
+                  <SkipForward size={14} /> Skip in Discord
+                </button>
+                <button className="btn" onClick={onStop}>
+                  <Square size={13} /> Stop Discord
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="now-empty">Nothing is playing. Pick a track from Search or Library.</div>
+        )}
+
+        {status ? (
+          <div className="now-conn">
+            <FreelancerStatsCard
+              title="Connection"
+              timeFrame={online ? 'Live' : 'Offline'}
+              headline={{
+                label: 'API latency',
+                value: lastPing !== null ? `${lastPing} ms` : '—',
+                change: online
+                  ? `Bot connected${guild?.voiceChannelName ? ` · ${guild.voiceChannelName}` : ''}`
+                  : 'Bot is offline',
+                positive: online
+              }}
+              subStats={[
+                {
+                  value: guild?.name ?? '—',
+                  label: 'server',
+                  subLabel: guild?.voiceChannelName ?? 'No voice channel'
+                },
+                { value: `${queueLength}`, label: 'queued', subLabel: 'tracks waiting in Discord' }
+              ]}
+              highlight={{
+                place: 'Shen bot',
+                category: online ? 'Connected to Discord' : 'Disconnected',
+                icon: <DiscordIcon width={18} height={18} />
+              }}
+              availability={{
+                title: 'Latency',
+                bars,
+                label: pings.length
+                  ? `Newest ${pings.length} samples · ${pingMin}–${pingMax} ms`
+                  : 'Waiting for the first sample'
+              }}
+              tone={online ? 'green' : 'red'}
+            />
+            <div className="volume-row">
+              <span className="muted">Volume</span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={volume}
+                onChange={(e) => onVolume(Number(e.target.value))}
+              />
+              <span className="muted">{volume}</span>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
   )
 }
 
@@ -2333,6 +2362,32 @@ function updateMessage(status: UpdateStatus): { title: string; body: string } {
   }
 }
 
+// One face for the time of day plus a seasonal or holiday mark, so the home
+// greeting stays current without anyone touching the copy each December.
+function greetingEmoji(date: Date): string {
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  const hour = date.getHours()
+  const face = hour < 5 ? '🌙' : hour < 12 ? '☀️' : hour < 17 ? '😄' : hour < 22 ? '😌' : '🌙'
+  const seasonal =
+    month === 12 && day >= 24 && day <= 26
+      ? '🎄'
+      : (month === 12 && day === 31) || (month === 1 && day === 1)
+        ? '🎉'
+        : month === 10 && day === 31
+          ? '🎃'
+          : month === 2 && day === 14
+            ? '💘'
+            : month === 12 || month === 1 || month === 2
+              ? '❄️'
+              : month >= 3 && month <= 5
+                ? '🌸'
+                : month >= 6 && month <= 8
+                  ? '☀️'
+                  : '🍂'
+  return face === seasonal ? face : `${face} ${seasonal}`
+}
+
 function formatSpan(seconds: number): string {
   const total = Math.max(0, Math.round(seconds))
   const hours = Math.floor(total / 3600)
@@ -2340,6 +2395,20 @@ function formatSpan(seconds: number): string {
   if (hours > 0) return `${hours}h ${minutes}m`
   if (minutes > 0) return `${minutes}m`
   return `${total}s`
+}
+
+function relativePlayedAt(timestamp?: number): string {
+  if (!timestamp) return ''
+  const diff = Date.now() - timestamp
+  const minute = 60_000
+  const hour = 3_600_000
+  const day = 86_400_000
+  if (diff < minute) return 'now'
+  if (diff < hour) return `${Math.floor(diff / minute)}m`
+  if (diff < day) return `${Math.floor(diff / hour)}h`
+  if (diff < day * 30) return `${Math.floor(diff / day)}d`
+  if (diff < day * 365) return `${Math.floor(diff / (day * 30))}mo`
+  return `${Math.floor(diff / (day * 365))}y`
 }
 
 function formatPlayedAt(timestamp?: number): string {
@@ -2355,46 +2424,65 @@ function formatPlayedAt(timestamp?: number): string {
   return `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${time}`
 }
 
-function PingChart({ samples }: { samples: { at: number; ms: number }[] }) {
+// One stray sample shouldn't flatten the rest of a chart: when the maximum is
+// far above the typical value, scale to the median and let outliers clamp.
+function spikeCeiling(values: number[]): number {
+  if (values.length === 0) return 1
+  const sorted = [...values].sort((a, b) => a - b)
+  const median = sorted[Math.floor(sorted.length / 2)]
+  const max = sorted[sorted.length - 1]
+  return Math.max(1, Math.min(max, median * 4))
+}
+
+function PingChart({
+  samples,
+  tone = 'green',
+  compact = false
+}: {
+  samples: { at: number; ms: number }[]
+  tone?: 'green' | 'red' | 'neutral'
+  compact?: boolean
+}) {
   if (samples.length === 0) {
     return <div className="spark-blank small">Measuring latency…</div>
   }
   const values = samples.map((sample) => sample.ms)
   const min = Math.min(...values)
   const max = Math.max(...values)
-  const span = max - min || Math.max(max, 1)
+  const ceiling = Math.max(max, 1)
   const slots: ({ at: number; ms: number } | null)[] = [
-    ...Array.from({ length: Math.max(0, 32 - samples.length) }, () => null),
-    ...samples.slice(-32)
+    ...Array.from({ length: Math.max(0, SPIKE_SLOTS - samples.length) }, () => null),
+    ...samples.slice(-SPIKE_SLOTS)
   ]
   return (
     <>
-      <div className="spikes conn-spikes" aria-hidden="true">
+      <div className={`spikes conn-spikes ${tone}`} aria-hidden="true">
         {slots.map((sample, index) =>
           sample ? (
             <span
-              key={sample.at}
+              key={`slot-${index}`}
               className={`spike${index === slots.length - 1 ? ' last' : ''}`}
               style={{
-                height: `${8 + ((sample.ms - min) / span) * 92}%`,
-                animationDelay: `${Math.min(index, 16) * 9}ms`
+                height: `${Math.max(6, Math.min(100, (sample.ms / ceiling) * 100))}%`
               }}
               title={`${sample.ms} ms`}
             />
           ) : (
             <span
-              key={`empty-${index}`}
+              key={`slot-${index}`}
               className="spike placeholder"
-              style={{ height: '3px' }}
+              style={{ height: '2px' }}
             />
           )
         )}
       </div>
-      <div className="spark-foot">
-        <span>min {min} ms</span>
-        <span>max {max} ms</span>
-        <span>now {values[values.length - 1]} ms</span>
-      </div>
+      {compact ? null : (
+        <div className="spark-foot">
+          <span>min {min} ms</span>
+          <span>max {max} ms</span>
+          <span>now {values[values.length - 1]} ms</span>
+        </div>
+      )}
     </>
   )
 }
@@ -2453,7 +2541,7 @@ function SparkCard({
   // Resample to a fixed bar count so every card has the same rhythm, then
   // scale from zero. Both matter: variable counts and min-based heights made
   // the bars look jagged and uneven even when the data was stable.
-  const BAR_COUNT = 44
+  const BAR_COUNT = SPIKE_SLOTS
   const bars = Array.from({ length: BAR_COUNT }, (_, index) => {
     const start = Math.floor((index * metric.points.length) / BAR_COUNT)
     const end = Math.max(
@@ -2464,7 +2552,7 @@ function SparkCard({
     const value = slice.reduce((total, point) => total + point.v, 0) / slice.length
     return { t: slice[0].t, v: value }
   })
-  const ceiling = Math.max(...bars.map((point) => point.v), 1)
+  const ceiling = spikeCeiling(bars.map((point) => point.v))
   const unit = metric.unit === 'pct' ? '%' : metric.unit
   const fmt = (value: number) => {
     if (Math.abs(value) >= 100) return value.toFixed(0)
@@ -2486,9 +2574,9 @@ function SparkCard({
           const height = Math.max(4, Math.min(100, (point.v / ceiling) * 100))
           return (
             <span
-              key={`${point.t}-${i}`}
+              key={`slot-${i}`}
               className={`spike${i === bars.length - 1 ? ' last' : ''}`}
-              style={{ height: `${height}%`, animationDelay: `${Math.min(i, 24) * 7}ms` }}
+              style={{ height: `${height}%` }}
               title={`${new Date(point.t).toLocaleTimeString()} · ${fmt(point.v)}${unit}`}
             />
           )

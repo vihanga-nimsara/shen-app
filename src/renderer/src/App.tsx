@@ -54,7 +54,8 @@ import {
   AppWindow,
   Boxes,
   GitBranch,
-  Download
+  Download,
+  Globe
 } from 'lucide-react'
 import {
   audioUrl,
@@ -1773,6 +1774,26 @@ export default function App() {
 
           {view === 'support' ? (
             <div className="support">
+              <div className="about-card">
+                <img className="about-logo" src={appIcon} alt="Shen logo" />
+                <div className="about-copy">
+                  <h2>Support</h2>
+                  <p>Get help, report issues, and keep Shen up to date.</p>
+                  <div className="about-tags">
+                    <span className="about-tag">
+                      <RefreshCw size={11} /> Auto-updates
+                    </span>
+                    <span className="about-tag">
+                      <Bug size={11} /> Bug reports
+                    </span>
+                    <span className="about-tag">
+                      <Lightbulb size={11} /> Feature ideas
+                    </span>
+                  </div>
+                </div>
+                <span className="pill">v{appVersion}</span>
+              </div>
+
               <div className="support-card">
                 <div className="support-head">
                   <span className="with-icon">
@@ -1855,6 +1876,41 @@ export default function App() {
                   </span>
                   <ArrowUpRight size={14} className="support-arrow" />
                 </button>
+              </div>
+
+              <div className="about-links">
+                <a
+                  className="about-link"
+                  href="https://github.com/vihanga-nimsara/shen-app"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <GitBranch size={13} /> Repository <ArrowUpRight size={11} />
+                </a>
+                <a
+                  className="about-link"
+                  href="https://github.com/vihanga-nimsara/shen-app/issues"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Bug size={13} /> Report an issue <ArrowUpRight size={11} />
+                </a>
+                <a
+                  className="about-link"
+                  href="https://github.com/vihanga-nimsara/shen-app/releases/latest"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Download size={13} /> Releases <ArrowUpRight size={11} />
+                </a>
+                <a
+                  className="about-link"
+                  href="https://zagan.space"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Globe size={13} /> Website <ArrowUpRight size={11} />
+                </a>
               </div>
 
               <div className="support-foot">

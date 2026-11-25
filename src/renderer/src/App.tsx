@@ -127,6 +127,16 @@ type Theme = 'dark' | 'light' | 'system'
 
 const SCALES = [90, 100, 110, 125]
 
+type Font = 'native' | 'inter' | 'segoe' | 'ubuntu' | 'roboto'
+const FONTS: Font[] = ['native', 'inter', 'segoe', 'ubuntu', 'roboto']
+const FONT_LABEL: Record<Font, string> = {
+  native: 'Native',
+  inter: 'Inter',
+  segoe: 'Segoe UI',
+  ubuntu: 'Ubuntu',
+  roboto: 'Roboto'
+}
+
 // One bar count for every sparkline in the app, so the connection strip, the
 // Status cards and the Now Playing card all share the same rhythm.
 const SPIKE_SLOTS = 44
@@ -216,6 +226,10 @@ export default function App() {
     const stored = Number(localStorage.getItem('shen-scale'))
     return SCALES.includes(stored) ? stored : 100
   })
+  const [font, setFont] = useState<Font>(() => {
+    const stored = localStorage.getItem('shen-font')
+    return FONTS.includes(stored as Font) ? (stored as Font) : 'native'
+  })
   const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('shen-sidebar') !== 'closed')
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuIndex, setMenuIndex] = useState(0)
@@ -272,6 +286,12 @@ export default function App() {
     document.documentElement.style.zoom = String(scale / 100)
     localStorage.setItem('shen-scale', String(scale))
   }, [scale])
+
+  useEffect(() => {
+    if (font === 'native') delete document.documentElement.dataset.font
+    else document.documentElement.dataset.font = font
+    localStorage.setItem('shen-font', font)
+  }, [font])
 
   const refreshLibrary = useCallback(async () => setLibrary(await getLibrary()), [])
   const refreshPlaylists = useCallback(async () => {
@@ -2041,11 +2061,26 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+                  <div className="setting-row">
+                    <div className="setting-copy">
+                      <div className="setting-name">UI font</div>
+                      <div className="setting-desc">
+                        Pick a typeface. Native uses the fonts shipped with your OS.
+                      </div>
+                    </div>
+                    <div className="segmented">
+                      {FONTS.map((item) => (
+                        <button
+                          key={item}
+                          className={font === item ? 'active' : ''}
+                          onClick={() => setFont(item)}
+                        >
+                          {FONT_LABEL[item]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              <div className="settings-group">
-                <div className="settings-title">Playback</div>
                 <div className="settings-card">
                   <div className="setting-row">
                     <div className="setting-copy">

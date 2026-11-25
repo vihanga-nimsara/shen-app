@@ -1849,32 +1849,36 @@ export default function App() {
                   className="support-card support-link"
                   onClick={() => openFeedback('bug')}
                 >
-                  <span className="support-icon">
-                    <Bug size={16} />
-                  </span>
-                  <span className="support-copy">
-                    <span className="setting-name">Report a bug</span>
-                    <span className="setting-desc">
-                      Something broken? Tell us what happened and we’ll look into it.
+                  <div className="support-link-head">
+                    <span className="support-icon">
+                      <Bug size={16} />
                     </span>
+                    <span className="support-copy">
+                      <span className="setting-name">Report a bug</span>
+                    </span>
+                    <ArrowUpRight size={14} className="support-arrow" />
+                  </div>
+                  <span className="support-desc">
+                    Something broken? Tell us what happened and we’ll look into it.
                   </span>
-                  <ArrowUpRight size={14} className="support-arrow" />
                 </button>
                 <button
                   type="button"
                   className="support-card support-link"
                   onClick={() => openFeedback('feature')}
                 >
-                  <span className="support-icon">
-                    <Lightbulb size={16} />
-                  </span>
-                  <span className="support-copy">
-                    <span className="setting-name">Request a feature</span>
-                    <span className="setting-desc">
-                      Tell us what would make Shen better.
+                  <div className="support-link-head">
+                    <span className="support-icon">
+                      <Lightbulb size={16} />
                     </span>
+                    <span className="support-copy">
+                      <span className="setting-name">Request a feature</span>
+                    </span>
+                    <ArrowUpRight size={14} className="support-arrow" />
+                  </div>
+                  <span className="support-desc">
+                    Tell us what would make Shen better.
                   </span>
-                  <ArrowUpRight size={14} className="support-arrow" />
                 </button>
               </div>
 

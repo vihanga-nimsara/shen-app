@@ -2511,12 +2511,25 @@ input[type='range']:disabled::-webkit-slider-thumb {
 }
 
 .support-link {
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   color: inherit;
   text-decoration: none;
   transition: background var(--dur) var(--ease);
+}
+
+.support-link-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.support-desc {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-faint);
+  padding-left: 46px;
 }
 
 .support-link:hover {
@@ -2536,6 +2549,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
 
 .support-arrow {
   flex-shrink: 0;
+  margin-left: auto;
   color: var(--text-weaker);
 }
 
@@ -2552,10 +2566,6 @@ input[type='range']:disabled::-webkit-slider-thumb {
   border-radius: inherit;
   background: var(--text-base);
   transition: width 0.3s var(--ease);
-}
-
-.support-card .setting-desc {
-  min-height: 2.7em;
 }
 
 .support-note {

@@ -2208,29 +2208,26 @@ input[type='range']:disabled::-webkit-slider-thumb {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 640px;
+  max-width: 700px;
 }
 
 .about-card {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 14px;
   padding: 16px;
   border-radius: var(--radius-panel);
   background: var(--bg-raised);
   box-shadow: inset 0 0 0 0.5px var(--ring-base);
 }
 
-.about-mark {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
+.about-logo {
+  width: 52px;
+  height: 52px;
   flex-shrink: 0;
-  border-radius: 10px;
-  background: var(--bg-layer-01);
-  box-shadow: inset 0 0 0 0.5px var(--ring-muted);
-  color: var(--text-muted);
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 0 0 0.5px var(--ring-base);
 }
 
 .about-copy {
@@ -2251,9 +2248,128 @@ input[type='range']:disabled::-webkit-slider-thumb {
   color: var(--text-faint);
 }
 
+.about-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.about-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.about-tag svg {
+  flex-shrink: 0;
+  color: var(--text-weaker);
+}
+
 .about-card .pill {
   flex-shrink: 0;
   align-self: flex-start;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.about-panel {
+  min-width: 0;
+  padding: 13px 16px 6px;
+  border-radius: var(--radius-panel);
+  background: var(--bg-raised);
+  box-shadow: inset 0 0 0 0.5px var(--ring-base);
+}
+
+.about-panel h3 {
+  padding-bottom: 4px;
+  font-size: 11.5px;
+  font-weight: 530;
+  color: var(--text-muted);
+}
+
+.about-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.about-row + .about-row {
+  box-shadow: inset 0 0.5px 0 var(--ring-base);
+}
+
+.about-row-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-weaker);
+}
+
+.about-row-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.about-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--text-base);
+}
+
+.about-row-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  color: var(--text-weaker);
+}
+
+.about-row-value {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.about-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: var(--text-weaker);
+}
+
+.about-status.supported {
+  color: var(--text-muted);
+}
+
+.about-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #3ac06a;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #3ac06a 22%, transparent);
 }
 
 .about-made {
@@ -2295,6 +2411,35 @@ input[type='range']:disabled::-webkit-slider-thumb {
 }
 
 .about-site:hover {
+  background: var(--surface-1-hover);
+  color: var(--text-base);
+}
+
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.about-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 0.5px var(--ring-strong);
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.about-link svg:last-child {
+  color: var(--text-weaker);
+}
+
+.about-link:hover {
   background: var(--surface-1-hover);
   color: var(--text-base);
 }
@@ -3312,6 +3457,10 @@ input[type='range']:disabled::-webkit-slider-thumb {
   .stat-grid,
   .fsc-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .about-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .player {

@@ -46,7 +46,15 @@ import {
   Lightbulb,
   Sun,
   Moon,
-  CircleUserRound
+  CircleUserRound,
+  Monitor,
+  Laptop,
+  Terminal,
+  Cpu,
+  AppWindow,
+  Boxes,
+  GitBranch,
+  Download
 } from 'lucide-react'
 import {
   audioUrl,
@@ -86,6 +94,7 @@ import {
   type User
 } from './api'
 import { getNorthflankLive, type NfLive, type NfMetric } from './nf'
+import appIcon from '../../../build/icon.png'
 import { devStatus } from './dev-data'
 import { submitFeedback, type FeedbackKind, type FeedbackResult } from './feedback'
 import type { UpdateStatus } from '../../shared/update-types'
@@ -746,6 +755,10 @@ export default function App() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const greetingMark = greetingEmoji(new Date())
+  const ua = navigator.userAgent
+  const electronVersion = ua.match(/Electron\/([\d.]+)/)?.[1] ?? '—'
+  const chromiumVersion = ua.match(/Chrome\/([\d.]+)/)?.[1]?.split('.')[0] ?? '—'
+  const architecture = /arm64|aarch64/i.test(ua) ? 'arm64' : 'x64'
 
   const dockTrack = current ?? status?.nowPlaying ?? null
   const dockSource = current ? 'Browser' : dockTrack ? 'Discord' : null
@@ -1612,17 +1625,109 @@ export default function App() {
           {view === 'about' ? (
             <div className="about">
               <div className="about-card">
-                <div className="about-mark">
-                  <Disc3 size={20} />
-                </div>
+                <img className="about-logo" src={appIcon} alt="Shen logo" />
                 <div className="about-copy">
                   <h2>Shen</h2>
                   <p>
                     A desktop music companion for the Shen Discord bot. Search, queue, and
-                    listen together.
+                    listen together with your server.
                   </p>
+                  <div className="about-tags">
+                    <span className="about-tag">
+                      <Monitor size={11} /> Desktop
+                    </span>
+                    <span className="about-tag">
+                      <DiscordIcon width={10} height={10} /> Discord bot
+                    </span>
+                    <span className="about-tag">
+                      <RefreshCw size={11} /> Auto-updates
+                    </span>
+                  </div>
                 </div>
                 <span className="pill">v{appVersion}</span>
+              </div>
+
+              <div className="about-grid">
+                <section className="about-panel">
+                  <h3>Details</h3>
+                  <div className="about-row">
+                    <span className="about-row-icon">
+                      <Cpu size={14} />
+                    </span>
+                    <span className="about-row-copy">
+                      <span className="about-row-name">Electron</span>
+                      <span className="about-row-sub">Desktop runtime</span>
+                    </span>
+                    <span className="about-row-value">{electronVersion}</span>
+                  </div>
+                  <div className="about-row">
+                    <span className="about-row-icon">
+                      <AppWindow size={14} />
+                    </span>
+                    <span className="about-row-copy">
+                      <span className="about-row-name">Chromium</span>
+                      <span className="about-row-sub">Rendering engine</span>
+                    </span>
+                    <span className="about-row-value">{chromiumVersion}</span>
+                  </div>
+                  <div className="about-row">
+                    <span className="about-row-icon">
+                      <Boxes size={14} />
+                    </span>
+                    <span className="about-row-copy">
+                      <span className="about-row-name">Architecture</span>
+                      <span className="about-row-sub">Build target</span>
+                    </span>
+                    <span className="about-row-value">{architecture}</span>
+                  </div>
+                  <div className="about-row">
+                    <span className="about-row-icon">
+                      <Download size={14} />
+                    </span>
+                    <span className="about-row-copy">
+                      <span className="about-row-name">Updates</span>
+                      <span className="about-row-sub">Delivered automatically</span>
+                    </span>
+                    <span className="about-row-value">GitHub</span>
+                  </div>
+                </section>
+
+                <section className="about-panel">
+                  <h3>Supported platforms</h3>
+                  <div className="about-row">
+                    <span className="about-row-icon">
+                      <Monitor size={14} />
+                    </span>
+                    <span className="about-row-copy">
+                      <span className="about-row-name">Windows</span>
+                      <span className="about-row-sub">10 / 11 · 64-bit</span>
+                    </span>
+                    <span className="about-status supported">
+                      <span className="about-dot" aria-hidden="true" />
+                      Available
+                    </span>
+                  </div>
+                  <div className="about-row">
+                    <span className="about-row-icon">
+                      <Laptop size={14} />
+                    </span>
+                    <span className="about-row-copy">
+                      <span className="about-row-name">macOS</span>
+                      <span className="about-row-sub">Apple silicon / Intel</span>
+                    </span>
+                    <span className="about-status">Not yet</span>
+                  </div>
+                  <div className="about-row">
+                    <span className="about-row-icon">
+                      <Terminal size={14} />
+                    </span>
+                    <span className="about-row-copy">
+                      <span className="about-row-name">Linux</span>
+                      <span className="about-row-sub">x64 builds</span>
+                    </span>
+                    <span className="about-status">Not yet</span>
+                  </div>
+                </section>
               </div>
 
               <div className="about-made">
@@ -1637,6 +1742,25 @@ export default function App() {
                   rel="noreferrer"
                 >
                   zagan.space <ArrowUpRight size={12} />
+                </a>
+              </div>
+
+              <div className="about-links">
+                <a
+                  className="about-link"
+                  href="https://github.com/vihanga-nimsara/shen-app"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <GitBranch size={13} /> Repository <ArrowUpRight size={11} />
+                </a>
+                <a
+                  className="about-link"
+                  href="https://github.com/vihanga-nimsara/shen-app/releases/latest"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Download size={13} /> Releases <ArrowUpRight size={11} />
                 </a>
               </div>
 

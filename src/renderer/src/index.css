@@ -2229,11 +2229,11 @@ input[type='range']:disabled::-webkit-slider-thumb {
   bottom: 0;
   width: 100%;
   border-radius: 2px 2px 0 0;
-  background: rgba(74, 222, 128, 0.5);
+  background: #4ade80;
 }
 
 .msc-bars.red .msc-bar-fill {
-  background: rgba(248, 113, 113, 0.42);
+  background: #f87171;
 }
 
 .msc-bars.neutral .msc-bar-fill {

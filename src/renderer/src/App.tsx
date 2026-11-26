@@ -144,6 +144,7 @@ const FONT_LABEL: Record<Font, string> = {
 // One bar count for every sparkline in the app, so the connection strip, the
 // Status cards and the Now Playing card all share the same rhythm.
 const SPIKE_SLOTS = 44
+const CONN_SLOTS = 80
 
 const NAV: { id: View; label: string; icon: ReactNode }[] = [
   { id: 'home', label: 'Home', icon: <House size={15} /> },
@@ -362,10 +363,10 @@ export default function App() {
         await res.text()
         if (cancelled) return
         const ms = Math.max(1, Math.round(performance.now() - started))
-        setPingSamples((prev) => [...prev.slice(-31), { at: Date.now(), ms }])
+        setPingSamples((prev) => [...prev.slice(-CONN_SLOTS), { at: Date.now(), ms }])
       } catch {
         if (cancelled) return
-        setPingSamples((prev) => [...prev.slice(-31), { at: Date.now(), ms: 0 }])
+        setPingSamples((prev) => [...prev.slice(-CONN_SLOTS), { at: Date.now(), ms: 0 }])
       }
       if (!cancelled) timer = window.setTimeout(() => void sample(), 3000)
     }
@@ -761,19 +762,19 @@ export default function App() {
   const formatPct = (value: number) => `${Number(value.toFixed(value < 1 ? 2 : 1))}%`
   const statusPingBars = [
     ...Array.from(
-      { length: Math.max(0, SPIKE_SLOTS - pingSamples.slice(-SPIKE_SLOTS).length) },
+      { length: Math.max(0, CONN_SLOTS - pingSamples.slice(-CONN_SLOTS).length) },
       () => 0
     ),
-    ...pingSamples.slice(-SPIKE_SLOTS).map((sample) => sample.ms)
+    ...pingSamples.slice(-CONN_SLOTS).map((sample) => sample.ms)
   ]
   const statusLastPing = pingSamples[pingSamples.length - 1]?.ms ?? null
   const statusPingMin = pingSamples.length
-    ? Math.min(...pingSamples.slice(-SPIKE_SLOTS).map((s) => s.ms))
+    ? Math.min(...pingSamples.slice(-CONN_SLOTS).map((s) => s.ms))
     : null
   const statusPingMax = pingSamples.length
-    ? Math.max(...pingSamples.slice(-SPIKE_SLOTS).map((s) => s.ms))
+    ? Math.max(...pingSamples.slice(-CONN_SLOTS).map((s) => s.ms))
     : null
-  const statusPingCount = pingSamples.slice(-SPIKE_SLOTS).length
+  const statusPingCount = pingSamples.slice(-CONN_SLOTS).length
   const vitalsStats: VitalsStat[] = [
     {
       value: cpuPct === null ? '—' : formatPct(cpuPct),

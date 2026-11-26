@@ -2198,11 +2198,11 @@ export default function App() {
             <div className="thumb" />
           )}
           <div className="meta">
-            <div className="title">{dockTrack?.title ?? 'Nothing playing'}</div>
+            <div className="title">{dockTrack?.title ?? 'No track playing'}</div>
             <div className="sub muted">
               {dockTrack
                 ? [dockTrack.artist || 'Unknown artist', dockSource].filter(Boolean).join(' · ')
-                : 'Browser playback'}
+                : 'Ready to play'}
             </div>
           </div>
           <div className="transport">
@@ -2648,7 +2648,7 @@ function NowPlaying({
             </div>
           </div>
         ) : (
-          <div className="now-empty">Nothing is playing. Pick a track from Search or Library.</div>
+          <div className="now-empty">Nothing is playing. Search or pick a track to start.</div>
         )}
 
       </div>

@@ -852,29 +852,19 @@ export default function App() {
   const dockTrack = current ?? status?.nowPlaying ?? null
   const nowTrack = current ?? status?.nowPlaying ?? null
   const relatedTracks = (() => {
+    const pool = [...library, ...(status?.history ?? [])]
     const seen = new Set<string>()
-    const out: Track[] = []
-    const history = [...(status?.history ?? [])].reverse()
-    for (const track of history) {
+    const sameArtist: Track[] = []
+    const others: Track[] = []
+    for (const track of pool) {
       const key = track.id ?? track.title
       if (seen.has(key)) continue
       seen.add(key)
-      if (nowTrack && key === (nowTrack.id ?? nowTrack.title)) continue
-      out.push(track)
-      if (out.length >= 8) break
+      if (!nowTrack || key === (nowTrack.id ?? nowTrack.title)) continue
+      if (nowTrack.artist && track.artist === nowTrack.artist) sameArtist.push(track)
+      else others.push(track)
     }
-    // fall back to library if history is thin
-    if (out.length < 8) {
-      for (const track of library) {
-        const key = track.id ?? track.title
-        if (seen.has(key)) continue
-        seen.add(key)
-        if (nowTrack && key === (nowTrack.id ?? nowTrack.title)) continue
-        out.push(track)
-        if (out.length >= 8) break
-      }
-    }
-    return out
+    return [...sameArtist, ...others].slice(0, 8)
   })()
   const dockSource = current ? 'Browser' : dockTrack ? 'Discord' : null
   const updateInfo = updateMessage(update)
@@ -2682,7 +2672,7 @@ function NowPlaying({
 
         {track && relatedTracks && relatedTracks.length > 0 ? (
           <div className="now-related">
-            <div className="now-related-title">Recent songs</div>
+            <div className="now-related-title">Related songs</div>
             <div className="now-related-list">
               {relatedTracks.map((item) => (
                 <div className="now-related-row" key={item.id ?? item.title}>

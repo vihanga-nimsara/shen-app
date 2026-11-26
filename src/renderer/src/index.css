@@ -1498,12 +1498,12 @@ p {
 
 .now-card {
   display: grid;
-  grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
-  gap: 18px;
-  padding: 16px;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  gap: 22px;
+  padding: 20px;
   border-radius: var(--radius-panel);
   background: var(--bg-raised);
-  box-shadow: inset 0 0 0 0.5px var(--ring-muted);
+  box-shadow: inset 0 0 0 0.5px var(--ring-muted), 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .now-card > img,
@@ -1511,25 +1511,30 @@ p {
   width: 100%;
   height: auto;
   aspect-ratio: 1 / 1;
-  border-radius: 12px;
+  border-radius: 14px;
   object-fit: cover;
   background: var(--bg-layer-01);
-  box-shadow: inset 0 0 0 0.5px var(--ring-muted);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 .now-card > div:last-child {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
   padding-top: 4px;
+  justify-content: center;
+}
+
+.now-card .pill {
+  margin-bottom: 2px;
 }
 
 .now-card h2 {
-  font-size: 18px;
-  font-weight: 530;
-  line-height: 1.25;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
   color: var(--text-base);
   overflow: hidden;
   display: -webkit-box;
@@ -1538,13 +1543,14 @@ p {
 }
 
 .now-card .muted {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
 .now-card .button-row {
-  margin-top: 10px;
+  margin-top: 12px;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
 .pill {

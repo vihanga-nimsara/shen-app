@@ -2588,7 +2588,6 @@ function NowPlaying({
   const pingMin = recentPings.length ? Math.min(...recentPings) : null
   const pingMax = recentPings.length ? Math.max(...recentPings) : null
 
-  const volume = status?.volume ?? 100
 
   return (
     <div className="now-tab">
@@ -2599,7 +2598,7 @@ function NowPlaying({
         <SoftAurora
           speed={3}
           scale={0.1}
-          brightness={0.95}
+          brightness={1.35}
           color1="#f7f7f7"
           color2="#e100ff"
           bandHeight={0}
@@ -2652,19 +2651,6 @@ function NowPlaying({
           <div className="now-empty">Nothing is playing. Pick a track from Search or Library.</div>
         )}
 
-        {status ? (
-﻿          <div className="volume-row">
-            <span className="muted">Volume</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={volume}
-              onChange={(e) => onVolume(Number(e.target.value))}
-            />
-            <span className="muted">{volume}</span>
-          </div>
-        ) : null}
       </div>
     </div>
   )

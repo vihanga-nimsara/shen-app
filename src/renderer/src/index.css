@@ -3307,7 +3307,8 @@ input[type='range']:disabled::-webkit-slider-thumb {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 480px;
+  flex: 1;
+  min-height: 100%;
   overflow: hidden;
   border-radius: var(--radius-panel);
   background: #080808;
@@ -3339,7 +3340,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
 .now-veil {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(8, 8, 8, 0.32), rgba(8, 8, 8, 0.82));
+  background: linear-gradient(180deg, rgba(8, 8, 8, 0.18), rgba(8, 8, 8, 0.55));
 }
 
 .now-inner {

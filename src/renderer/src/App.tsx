@@ -51,6 +51,9 @@ import {
   Laptop,
   Terminal,
   Cpu,
+  MemoryStick,
+  ArrowDownToLine,
+  ArrowUpFromLine,
   AppWindow,
   Boxes,
   GitBranch,
@@ -102,11 +105,12 @@ import type { UpdateStatus } from '../../shared/update-types'
 import { Ring } from './components/ring'
 import { DiscordIcon } from './components/discord-icon'
 import SoftAurora from './components/SoftAurora'
-import { FreelancerStatsCard } from './components/ui/freelancer-stats-card'
 import {
   ListeningActivity,
   type ListeningLevel
 } from './components/ui/listening-activity'
+import { VitalsWidget, type VitalsRing, type VitalsStat } from './components/ui/vitals-widget'
+import { MinimalStepsCard } from './components/ui/minimal-steps-card'
 import { Alert, AlertAction, AlertDescription } from './components/ui/alert'
 import { Button } from './components/ui/button'
 
@@ -437,7 +441,7 @@ export default function App() {
     es.onmessage = (ev) => {
       try {
         const next = JSON.parse(ev.data) as Status
-        setStatus(next)
+        setStatus(import.meta.env.DEV ? devStatus(next) : next)
         if (Array.isArray(next.library)) setLibrary(next.library)
       } catch {
         /* ignore malformed frames */
@@ -739,6 +743,69 @@ export default function App() {
       : history.filter((track) => (track.artist?.trim() || '') === topArtist)
   const artistCovers = coversOf(topArtistTracks.length > 0 ? topArtistTracks : history, 1)
   const savedCovers = coversOf(library)
+
+  // Status tab vitals: the latest sample of each live metric plus the local
+  // latency average, folded into three rings and a single health score.
+  const latestSample = (metric: NfMetric | null) => {
+    const last = metric?.points[metric.points.length - 1]
+    return typeof last?.v === 'number' ? last.v : null
+  }
+  const clampPct = (value: number) => Math.min(100, Math.max(0, value))
+  const cpuPct = latestSample(nf?.metrics.cpu ?? null)
+  const memoryPct = latestSample(nf?.metrics.memory ?? null)
+  const avgPing = pingSamples.length
+    ? Math.round(
+        pingSamples.reduce((total, sample) => total + sample.ms, 0) / pingSamples.length
+      )
+    : null
+  const formatPct = (value: number) => `${Number(value.toFixed(value < 1 ? 2 : 1))}%`
+  const statusPingBars = [
+    ...Array.from(
+      { length: Math.max(0, SPIKE_SLOTS - pingSamples.slice(-SPIKE_SLOTS).length) },
+      () => 0
+    ),
+    ...pingSamples.slice(-SPIKE_SLOTS).map((sample) => sample.ms)
+  ]
+  const statusLastPing = pingSamples[pingSamples.length - 1]?.ms ?? null
+  const statusPingMin = pingSamples.length
+    ? Math.min(...pingSamples.slice(-SPIKE_SLOTS).map((s) => s.ms))
+    : null
+  const statusPingMax = pingSamples.length
+    ? Math.max(...pingSamples.slice(-SPIKE_SLOTS).map((s) => s.ms))
+    : null
+  const statusPingCount = pingSamples.slice(-SPIKE_SLOTS).length
+  const vitalsStats: VitalsStat[] = [
+    {
+      value: cpuPct === null ? '—' : formatPct(cpuPct),
+      label: 'CPU',
+      color: '#7388ff',
+      icon: <Cpu />
+    },
+    {
+      value: memoryPct === null ? '—' : formatPct(memoryPct),
+      label: 'Memory',
+      color: '#f0577a',
+      icon: <MemoryStick />
+    }
+  ]
+  const vitalsRings: VitalsRing[] = [
+    ...(cpuPct === null
+      ? []
+      : [{ label: 'CPU', value: clampPct(cpuPct), color: '#7388ff' }]),
+    ...(memoryPct === null
+      ? []
+      : [{ label: 'Memory', value: clampPct(memoryPct), color: '#f0577a' }]),
+    ...(avgPing === null
+      ? []
+      : [{ label: 'Latency', value: Math.min(100, Math.max(0, avgPing)), color: '#5fe24f' }])
+  ]
+  const vitalsScore = Math.round(
+    [
+      100 - clampPct(cpuPct ?? 0),
+      100 - clampPct(memoryPct ?? 0),
+      avgPing === null ? 100 : 100 - Math.min(100, avgPing / 2)
+    ].reduce((total, part) => total + part, 0) / 3
+  )
 
   // A year of daily plays for the home heatmap. Days run Sunday→Saturday so
   // the columns line up; today and the rest of the week simply have no plays.
@@ -1542,83 +1609,81 @@ export default function App() {
                 </div>
               ) : nf ? (
                 <>
-                  <div className="status-conn">
-                    <div className="status-conn-head">
-                      <span
-                        className={`live-dot${status?.botReady ? '' : ' idle'}`}
-                        aria-hidden="true"
-                      />
-                      <span className="with-icon">
-                        <DiscordIcon width={13} height={13} /> Discord
-                      </span>
-                      <b>{status?.botReady ? 'Online' : 'Offline'}</b>
-                      <span className="spacer" />
-                      <span className="muted">{statusGuild?.name ?? 'No server'}</span>
-                      <span className="muted">
-                        {statusGuild?.voiceChannelName ?? 'Not connected'}
-                      </span>
-                    </div>
-                    <PingChart
-                      samples={pingSamples}
+﻿                  <div className="status-conn-card">
+                    <MinimalStepsCard
+                      title="Connection"
+                      subtitle={status?.botReady ? 'Discord connected' : 'Discord offline'}
+                      value={statusLastPing}
+                      unit="ms"
+                      icon={<DiscordIcon width={15} height={15} />}
+                      data={statusPingBars}
                       tone={status?.botReady ? 'green' : 'red'}
-                      compact
+                      footer={
+                        <>
+                          <span>
+                            {statusPingMin === null
+                              ? 'Waiting for latency'
+                              : `min ${statusPingMin} ms`}
+                          </span>
+                          <span>
+                            {statusPingMax === null ? '' : `max ${statusPingMax} ms`}
+                          </span>
+                          <span>
+                            {statusPingCount
+                              ? `${statusPingCount} sample${statusPingCount === 1 ? '' : 's'}`
+                              : ''}
+                          </span>
+                        </>
+                      }
                     />
+                    {statusGuild?.name ? (
+                      <div className="status-conn-meta">
+                        <span className="muted">{statusGuild.name}</span>
+                        <span className="muted">
+                          {statusGuild.voiceChannelName ?? 'Not connected'}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
 
-                  <div className="nf-summary">
-                    <div className="nf-headline">
-                      <span
-                        className={`live-dot${
-                          nf.service.paused || nf.service.status !== 'COMPLETED' ? ' idle' : ''
-                        }`}
-                      />
-                      <div className="nf-id">
-                        <div className="nf-name">{nf.service.name}</div>
-                        <div className="nf-meta">
-                          {nf.service.region}
-                          {nf.service.plan ? ` · ${nf.service.plan}` : ''}
-                          {` · ${nf.service.instances} instance${
-                            nf.service.instances === 1 ? '' : 's'
-                          }`}
-                        </div>
-                      </div>
-                      <span className="nf-state">{statusLabel(nf.service)}</span>
-                    </div>
-                    <div className="nf-facts">
-                      <div>
-                        <span>Commit</span>
-                        <b>{nf.service.commit ? nf.service.commit.slice(0, 7) : '—'}</b>
-                      </div>
-                      <div>
-                        <span>Domain</span>
-                        <b className="nf-domain" title={nf.service.domain ?? undefined}>
-                          {nf.service.domain ?? '—'}
-                        </b>
-                      </div>
-                      <div>
-                        <span>Updated</span>
-                        <b>{new Date(nf.fetchedAt).toLocaleTimeString()}</b>
-                      </div>
-                      <div>
-                        <span>Source</span>
-                        <b>
-                          {nf.source === 'backend'
-                            ? 'Hosted API'
-                            : nf.source === 'cli'
-                              ? 'CLI session'
-                              : nf.source === 'dotenv'
-                                ? '.env token'
-                                : 'env token'}
-                        </b>
-                      </div>
-                    </div>
-                  </div>
+                  <VitalsWidget
+                    className="status-vitals"
+                    title="Server"
+                    stats={vitalsStats}
+                    rings={vitalsRings}
+                    score={vitalsScore}
+                    scoreLabel="Health"
+                  />
 
                   <div className="spark-grid">
-                    <SparkCard label="CPU" metric={nf.metrics.cpu} tone="green" />
-                    <SparkCard label="Memory" metric={nf.metrics.memory} tone="green" />
-                    <SparkCard label="Network in" metric={nf.metrics.networkIngress} tone="green" />
-                    <SparkCard label="Network out" metric={nf.metrics.networkEgress} tone="red" />
+                    <MetricStepsCard
+                      label="CPU"
+                      metric={nf.metrics.cpu}
+                      tone="green"
+                      icon={<Cpu />}
+                      minutes={Math.round(nf.duration / 60)}
+                    />
+                    <MetricStepsCard
+                      label="Memory"
+                      metric={nf.metrics.memory}
+                      tone="green"
+                      icon={<MemoryStick />}
+                      minutes={Math.round(nf.duration / 60)}
+                    />
+                    <MetricStepsCard
+                      label="Network in"
+                      metric={nf.metrics.networkIngress}
+                      tone="green"
+                      icon={<ArrowDownToLine />}
+                      minutes={Math.round(nf.duration / 60)}
+                    />
+                    <MetricStepsCard
+                      label="Network out"
+                      metric={nf.metrics.networkEgress}
+                      tone="red"
+                      icon={<ArrowUpFromLine />}
+                      minutes={Math.round(nf.duration / 60)}
+                    />
                   </div>
 
                   <div className="nf-foot">
@@ -2510,29 +2575,18 @@ function NowPlaying({
   onVolume: (volume: number) => void
 }) {
   const track = current ?? status?.nowPlaying ?? null
-  const guild =
-    status?.guilds?.find((entry) => entry.inVoice) ??
-    status?.guilds?.find((entry) => entry.id === status.guildId) ??
-    null
   const lastPing = pingSamples[pingSamples.length - 1]?.ms ?? null
   const online = Boolean(status?.botReady)
 
-  // Latency bars follow the Status tab's spike rules: a fixed slot count,
-  // heights scaled from zero, and the newest sample brighter than the rest.
-  const recent = pingSamples.slice(-SPIKE_SLOTS)
-  const pings = recent.map((sample) => sample.ms)
-  const pingMax = Math.max(...pings, 1)
-  const pingMin = pings.length ? Math.min(...pings) : 0
-  const pingCeiling = spikeCeiling(pings)
-  const bars = [
-    ...Array.from({ length: SPIKE_SLOTS - recent.length }, () => ({ level: 0, ms: null as number | null })),
-    ...recent.map((sample) => ({
-      level: Math.min(1, Math.max(0.08, sample.ms / pingCeiling)),
-      ms: sample.ms
-    }))
+  // Latency bars share the Status tab's slot count so both views read the same.
+  const recentPings = pingSamples.slice(-SPIKE_SLOTS).map((sample) => sample.ms)
+  const pingBars = [
+    ...Array.from({ length: Math.max(0, SPIKE_SLOTS - recentPings.length) }, () => 0),
+    ...recentPings
   ]
+  const pingMin = recentPings.length ? Math.min(...recentPings) : null
+  const pingMax = recentPings.length ? Math.max(...recentPings) : null
 
-  const queueLength = status?.queue?.length ?? 0
   const volume = status?.volume ?? 100
 
   return (
@@ -2598,51 +2652,16 @@ function NowPlaying({
         )}
 
         {status ? (
-          <div className="now-conn">
-            <FreelancerStatsCard
-              title="Connection"
-              timeFrame={online ? 'Live' : 'Offline'}
-              headline={{
-                label: 'API latency',
-                value: lastPing !== null ? `${lastPing} ms` : '—',
-                change: online
-                  ? `Bot connected${guild?.voiceChannelName ? ` · ${guild.voiceChannelName}` : ''}`
-                  : 'Bot is offline',
-                positive: online
-              }}
-              subStats={[
-                {
-                  value: guild?.name ?? '—',
-                  label: 'server',
-                  subLabel: guild?.voiceChannelName ?? 'No voice channel'
-                },
-                { value: `${queueLength}`, label: 'queued', subLabel: 'tracks waiting in Discord' }
-              ]}
-              highlight={{
-                place: 'Shen bot',
-                category: online ? 'Connected to Discord' : 'Disconnected',
-                icon: <DiscordIcon width={18} height={18} />
-              }}
-              availability={{
-                title: 'Latency',
-                bars,
-                label: pings.length
-                  ? `Newest ${pings.length} samples · ${pingMin}–${pingMax} ms`
-                  : 'Waiting for the first sample'
-              }}
-              tone={online ? 'green' : 'red'}
+﻿          <div className="volume-row">
+            <span className="muted">Volume</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={volume}
+              onChange={(e) => onVolume(Number(e.target.value))}
             />
-            <div className="volume-row">
-              <span className="muted">Volume</span>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={volume}
-                onChange={(e) => onVolume(Number(e.target.value))}
-              />
-              <span className="muted">{volume}</span>
-            </div>
+            <span className="muted">{volume}</span>
           </div>
         ) : null}
       </div>
@@ -2748,14 +2767,6 @@ function formatPlayedAt(timestamp?: number): string {
 
 // One stray sample shouldn't flatten the rest of a chart: when the maximum is
 // far above the typical value, scale to the median and let outliers clamp.
-function spikeCeiling(values: number[]): number {
-  if (values.length === 0) return 1
-  const sorted = [...values].sort((a, b) => a - b)
-  const median = sorted[Math.floor(sorted.length / 2)]
-  const max = sorted[sorted.length - 1]
-  return Math.max(1, Math.min(max, median * 4))
-}
-
 function PingChart({
   samples,
   tone = 'green',
@@ -2809,13 +2820,6 @@ function PingChart({
   )
 }
 
-function statusLabel(service: NfLive['service']): string {
-  if (service.paused) return 'Paused'
-  if (service.status === 'COMPLETED') return 'Running'
-  const words = service.status.toLowerCase().replace(/_/g, ' ')
-  return words.charAt(0).toUpperCase() + words.slice(1)
-}
-
 function StatArt({ covers, fallback }: { covers: string[]; fallback: ReactNode }) {
   if (covers.length === 0) return <span className="stat-art is-empty">{fallback}</span>
   return (
@@ -2835,20 +2839,28 @@ function StatArt({ covers, fallback }: { covers: string[]; fallback: ReactNode }
   )
 }
 
-function SparkCard({
+function MetricStepsCard({
   label,
   metric,
-  tone = 'neutral'
+  tone = 'neutral',
+  icon,
+  minutes
 }: {
   label: string
   metric: NfMetric | null
   tone?: 'green' | 'red' | 'neutral'
+  icon: ReactNode
+  minutes: number
 }) {
   if (!metric || metric.points.length === 0) {
     return (
-      <div className="spark-card">
-        <div className="spark-head">
-          <span className="spark-label">{label}</span>
+      <div className="msc">
+        <div className="msc-head">
+          <div className="msc-heading">
+            <h2 className="msc-title">{label}</h2>
+            <p className="msc-sub">Last {minutes} minutes</p>
+          </div>
+          <div className={`msc-icon ${tone}`}>{icon}</div>
         </div>
         <div className="spark-blank">No samples in this window</div>
       </div>
@@ -2859,10 +2871,10 @@ function SparkCard({
   const min = Math.min(...values)
   const max = Math.max(...values)
   const last = values[values.length - 1]
+  const unit = metric.unit === 'pct' ? '%' : metric.unit
 
-  // Resample to a fixed bar count so every card has the same rhythm, then
-  // scale from zero. Both matter: variable counts and min-based heights made
-  // the bars look jagged and uneven even when the data was stable.
+  // Resample to a fixed bar count so every card has the same rhythm. Averages
+  // keep the bars from getting jagged when the raw window has uneven spacing.
   const BAR_COUNT = SPIKE_SLOTS
   const bars = Array.from({ length: BAR_COUNT }, (_, index) => {
     const start = Math.floor((index * metric.points.length) / BAR_COUNT)
@@ -2871,44 +2883,39 @@ function SparkCard({
       Math.floor(((index + 1) * metric.points.length) / BAR_COUNT)
     )
     const slice = metric.points.slice(start, end)
-    const value = slice.reduce((total, point) => total + point.v, 0) / slice.length
-    return { t: slice[0].t, v: value }
+    return slice.reduce((total, point) => total + point.v, 0) / slice.length
   })
-  const ceiling = spikeCeiling(bars.map((point) => point.v))
-  const unit = metric.unit === 'pct' ? '%' : metric.unit
+
   const fmt = (value: number) => {
     if (Math.abs(value) >= 100) return value.toFixed(0)
     if (Math.abs(value) >= 10) return value.toFixed(1).replace(/\.0$/, '')
     return value.toFixed(2).replace(/\.?0+$/, '')
   }
+  const precision = Math.abs(last) >= 100 ? 0 : Math.abs(last) >= 10 ? 1 : 2
 
   return (
-    <div className="spark-card">
-      <div className="spark-head">
-        <span className="spark-label">{label}</span>
-        <span className="spark-value">
-          {fmt(last)}
-          <small>{unit}</small>
-        </span>
-      </div>
-      <div className={`spikes ${tone}`} aria-hidden="true">
-        {bars.map((point, i) => {
-          const height = Math.max(4, Math.min(100, (point.v / ceiling) * 100))
-          return (
-            <span
-              key={`slot-${i}`}
-              className={`spike${i === bars.length - 1 ? ' last' : ''}`}
-              style={{ height: `${height}%` }}
-              title={`${new Date(point.t).toLocaleTimeString()} · ${fmt(point.v)}${unit}`}
-            />
-          )
-        })}
-      </div>
-      <div className="spark-foot">
-        <span>min {fmt(min)}{unit}</span>
-        <span>max {fmt(max)}{unit}</span>
-        <span>{metric.points.length} pts</span>
-      </div>
-    </div>
+    <MinimalStepsCard
+      title={label}
+      subtitle={`Last ${minutes} minutes`}
+      value={last}
+      unit={unit}
+      precision={precision}
+      icon={icon}
+      data={bars}
+      tone={tone}
+      footer={
+        <>
+          <span>
+            min {fmt(min)}
+            {unit}
+          </span>
+          <span>
+            max {fmt(max)}
+            {unit}
+          </span>
+          <span>{metric.points.length} pts</span>
+        </>
+      }
+    />
   )
 }

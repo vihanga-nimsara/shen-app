@@ -36,6 +36,8 @@
   --overlay-hover: rgba(255, 255, 255, 0.06);
   --overlay-pressed: rgba(255, 255, 255, 0.1);
 
+  --account-bg: rgba(22, 22, 24, 0.72);
+
   /* theme-aware neutral surfaces */
   --surface-1: rgba(255, 255, 255, 0.06);
   --surface-1-hover: rgba(255, 255, 255, 0.1);
@@ -113,6 +115,8 @@ html[data-theme='light'] {
 
   --overlay-hover: rgba(0, 0, 0, 0.04);
   --overlay-pressed: rgba(0, 0, 0, 0.07);
+
+  --account-bg: rgba(255, 255, 255, 0.72);
 
   --surface-1: rgba(0, 0, 0, 0.045);
   --surface-1-hover: rgba(0, 0, 0, 0.075);
@@ -588,6 +592,9 @@ p {
 }
 
 .account-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -596,19 +603,55 @@ p {
   padding: 0 6px;
   border: none;
   border-radius: var(--radius);
-  background: transparent;
+  background: var(--account-bg);
+  box-shadow: inset 0 0 0 0.5px var(--ring-base);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background var(--dur) var(--ease);
+  transition: box-shadow var(--dur) var(--ease);
+}
+
+/* A soft rainbow sheen under a dark, translucent base. */
+.account-card::before {
+  content: '';
+  position: absolute;
+  inset: -90% -25%;
+  z-index: 0;
+  background: conic-gradient(
+    from 200deg at 50% 50%,
+    #ff4d6d,
+    #ffb347,
+    #f9f871,
+    #5fe24f,
+    #4aa9ea,
+    #9b6bff,
+    #ff4d6d
+  );
+  filter: blur(16px) saturate(130%);
+  opacity: 0.26;
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease);
+}
+
+.account-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .account-card:hover {
-  background: var(--overlay-hover);
+  box-shadow: inset 0 0 0 0.5px var(--ring-strong);
+}
+
+.account-card:hover::before {
+  opacity: 0.34;
 }
 
 .account-card.open {
-  background: var(--overlay-pressed);
+  box-shadow: inset 0 0 0 0.5px var(--ring-strong);
+}
+
+.account-card.open::before {
+  opacity: 0.4;
 }
 
 .account-avatar-wrap {
@@ -2073,6 +2116,139 @@ input[type='range']:disabled::-webkit-slider-thumb {
   gap: 8px;
 }
 
+/* ---------- minimal steps card (status metrics) ---------- */
+
+.msc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px 12px;
+  border-radius: var(--radius-panel);
+  background: var(--bg-raised);
+  box-shadow: inset 0 0 0 0.5px var(--ring-base);
+}
+
+.msc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.msc-heading {
+  min-width: 0;
+}
+
+.msc-title {
+  font-size: 13px;
+  font-weight: 530;
+  letter-spacing: -0.01em;
+  color: var(--text-base);
+}
+
+.msc-sub {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.msc-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.msc-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.msc-icon.green {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+}
+
+.msc-icon.red {
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+}
+
+.msc-value {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.msc-value b {
+  font-size: 34px;
+  font-weight: 560;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  color: var(--text-base);
+}
+
+.msc-value span {
+  font-size: 13px;
+  font-weight: 440;
+  color: var(--text-faint);
+}
+
+.msc-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 82px;
+  margin-top: 4px;
+}
+
+.msc-bar {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+}
+
+.msc-bar-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px 2px 0 0;
+  background: var(--surface-2);
+}
+
+.msc-bar-fill {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  background: rgba(74, 222, 128, 0.5);
+}
+
+.msc-bars.red .msc-bar-fill {
+  background: rgba(248, 113, 113, 0.42);
+}
+
+.msc-bars.neutral .msc-bar-fill {
+  background: var(--text-weaker);
+}
+
+.msc-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--text-weaker);
+  font-variant-numeric: tabular-nums;
+}
+
 .spark-card {
   display: flex;
   flex-direction: column;
@@ -2931,6 +3107,8 @@ input[type='range']:disabled::-webkit-slider-thumb {
 }
 
 .home-activity {
+  width: 100%;
+  min-width: 0;
   padding: 14px 16px;
   border-radius: var(--radius-panel);
   background: var(--bg-raised);
@@ -2959,17 +3137,22 @@ input[type='range']:disabled::-webkit-slider-thumb {
 
 .la {
   position: relative;
+  width: 100%;
+  min-width: 0;
   margin-top: 12px;
   color: var(--text-base);
 }
 
 .la-grid-wrap {
   position: relative;
+  width: 100%;
+  min-width: 0;
 }
 
 .la-months {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .la-month {
@@ -2989,7 +3172,8 @@ input[type='range']:disabled::-webkit-slider-thumb {
 
 .la-grid {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -3419,15 +3603,20 @@ input[type='range']:disabled::-webkit-slider-thumb {
   color: var(--text-weaker);
 }
 
-/* Discord connection strip on the Status tab. */
-.status-conn {
+/* Discord connection card on the Status tab. */
+.status-conn-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 12px;
-  border-radius: var(--radius-panel);
-  background: var(--bg-raised);
-  box-shadow: inset 0 0 0 0.5px var(--ring-base);
+}
+
+.status-conn-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
+  font-size: 11.5px;
+  color: var(--text-weaker);
 }
 
 .status-conn-head {

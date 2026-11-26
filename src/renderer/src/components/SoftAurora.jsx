@@ -151,8 +151,8 @@ void main() {
 
   float glow1 = auroraGlow(t, field, bend) * boost;
   float glow2 = auroraGlow(t + uLayerOffset, field, bend) * boost;
-  vec3 gradient1 = mix(vec3(1.0), cosineGradient(uv.x + uHue * 0.2, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.3, 0.20, 0.20)), uSpectrum);
-  vec3 gradient2 = mix(vec3(1.0), cosineGradient(uv.x + uHue * 0.1, vec3(0.5), vec3(0.5), vec3(2.0, 1.0, 0.0), vec3(0.5, 0.20, 0.25)), uSpectrum);
+  vec3 gradient1 = mix(vec3(1.0), cosineGradient(uv.x + uHue * 0.2, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.0, 0.33, 0.67)), uSpectrum);
+  vec3 gradient2 = mix(vec3(1.0), cosineGradient(uv.x + uHue * 0.1, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.33, 0.67, 0.0)), uSpectrum);
 
   vec3 col = 0.99 * glow1 * gradient1 * uColor1;
   col += 0.99 * glow2 * gradient2 * uColor2;

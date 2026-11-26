@@ -2618,8 +2618,8 @@ function NowPlaying({
           speed={3}
           scale={0.1}
           brightness={1.35}
-          color1="#f7f7f7"
-          color2="#e100ff"
+          color1="#ffffff"
+          color2="#ffffff"
           bandHeight={0}
           bandSpread={1}
           enableMouseInteraction

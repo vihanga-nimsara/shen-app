@@ -1878,7 +1878,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
 .settings {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 28px;
   width: 100%;
   max-width: 760px;
   padding: 10px 4px 24px;
@@ -1887,6 +1887,7 @@ input[type='range']:disabled::-webkit-slider-thumb {
 .settings-group {
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 
 .settings-title {

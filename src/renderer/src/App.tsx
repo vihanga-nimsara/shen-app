@@ -850,6 +850,22 @@ export default function App() {
   const architecture = /arm64|aarch64/i.test(ua) ? 'arm64' : 'x64'
 
   const dockTrack = current ?? status?.nowPlaying ?? null
+  const nowTrack = current ?? status?.nowPlaying ?? null
+  const relatedTracks = (() => {
+    const pool = [...library, ...(status?.history ?? [])]
+    const seen = new Set<string>()
+    const sameArtist: Track[] = []
+    const others: Track[] = []
+    for (const track of pool) {
+      const key = track.id ?? track.title
+      if (seen.has(key)) continue
+      seen.add(key)
+      if (!nowTrack || key === (nowTrack.id ?? nowTrack.title)) continue
+      if (nowTrack.artist && track.artist === nowTrack.artist) sameArtist.push(track)
+      else others.push(track)
+    }
+    return [...sameArtist, ...others].slice(0, 8)
+  })()
   const dockSource = current ? 'Browser' : dockTrack ? 'Discord' : null
   const updateInfo = updateMessage(update)
   const statusGuild =
@@ -1466,6 +1482,7 @@ export default function App() {
               playing={playing}
               status={status}
               pingSamples={pingSamples}
+              relatedTracks={relatedTracks}
               onPlay={play}
               onSkip={() =>
                 run(async () => {
@@ -2561,6 +2578,7 @@ function NowPlaying({
   playing,
   status,
   pingSamples,
+  relatedTracks,
   onPlay,
   onSkip,
   onStop,
@@ -2570,6 +2588,7 @@ function NowPlaying({
   playing: boolean
   status: Status | null
   pingSamples: { at: number; ms: number }[]
+  relatedTracks?: Track[]
   onPlay: (track: Track) => void
   onSkip: () => void
   onStop: () => void
@@ -2620,7 +2639,7 @@ function NowPlaying({
       </div>
 
       <div className="now-inner">
-        {track ? (
+﻿        {track ? (
           <div className="now-card">
             {coverUrl(track) ? (
               <img src={coverUrl(track) ?? undefined} alt="" onError={(e) => { e.currentTarget.style.visibility = 'hidden' }} />
@@ -2651,6 +2670,29 @@ function NowPlaying({
           <div className="now-empty">Nothing is playing. Search or pick a track to start.</div>
         )}
 
+        {track && relatedTracks && relatedTracks.length > 0 ? (
+          <div className="now-related">
+            <div className="now-related-title">Related tracks</div>
+            <div className="now-related-grid">
+              {relatedTracks.map((item) => (
+                <div className="now-related-card" key={item.id ?? item.title}>
+                  {coverUrl(item) ? (
+                    <img src={coverUrl(item) ?? undefined} alt="" />
+                  ) : (
+                    <div className="now-related-cover" />
+                  )}
+                  <div className="now-related-meta">
+                    <div className="now-related-name">{item.title}</div>
+                    <div className="now-related-artist">{item.artist || 'Unknown artist'}</div>
+                  </div>
+                  <button className="btn small" onClick={() => onPlay(item)}>
+                    <Play size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   )

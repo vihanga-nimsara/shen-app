@@ -5,8 +5,6 @@ import * as React from "react"
 import { RotateCcw, ArrowUpRight } from "lucide-react"
 import { motion, type Transition } from "framer-motion"
 
-import { cn } from "@/lib/utils"
-
 const notifications = [
   {
     id: 1,
@@ -64,57 +62,54 @@ const viewAllTextVariants = {
 function NotificationList() {
   return (
     <motion.div
-      className="bg-neutral-200 dark:bg-neutral-900 p-3 rounded-[10px] w-full space-y-3 shadow-md"
+      className="notif-list"
       initial="collapsed"
       whileHover="expanded"
+      aria-label="Notifications"
     >
       <div>
         {notifications.map((notification, i) => (
           <motion.div
             key={notification.id}
-            className="bg-neutral-100 dark:bg-neutral-800 rounded-[10px] px-4 py-2 shadow-sm hover:shadow-lg transition-shadow duration-200 relative"
+            className="notif-card"
             variants={getCardVariants(i)}
             transition={transition}
-            style={{
-              zIndex: notifications.length - i,
-            }}
+            style={{ zIndex: notifications.length - i }}
           >
-            <div className="flex justify-between items-center">
-              <h1 className="text-sm font-medium">{notification.title}</h1>
-              {notification.count && (
-                <div className="flex items-center text-xs gap-0.5 font-medium text-neutral-500 dark:text-neutral-300">
-                  <RotateCcw className="size-3" />
+            <div className="notif-card-top">
+              <span className="notif-title">{notification.title}</span>
+              {notification.count ? (
+                <span className="notif-recount">
+                  <RotateCcw size={11} />
                   <span>{notification.count}</span>
-                </div>
-              )}
+                </span>
+              ) : null}
             </div>
-            <div className="text-xs text-neutral-500 font-medium">
+            <div className="notif-meta">
               <span>{notification.time}</span>
-              &nbsp;•&nbsp;
+              <span className="notif-dot">·</span>
               <span>{notification.subtitle}</span>
             </div>
           </motion.div>
         ))}
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="size-5 rounded-full bg-neutral-400 text-white text-xs flex items-center justify-center font-medium">
-          {notifications.length}
-        </div>
-        <span className="grid">
+      <div className="notif-foot">
+        <span className="notif-badge">{notifications.length}</span>
+        <span className="notif-switch">
           <motion.span
-            className="text-sm font-medium text-neutral-600 dark:text-neutral-300 row-start-1 col-start-1"
+            className="notif-label"
             variants={notificationTextVariants}
             transition={textSwitchTransition}
           >
             Notifications
           </motion.span>
           <motion.span
-            className="text-sm font-medium text-neutral-600 dark:text-neutral-300 flex items-center gap-1 cursor-pointer select-none row-start-1 col-start-1"
+            className="notif-label notif-viewall"
             variants={viewAllTextVariants}
             transition={textSwitchTransition}
           >
-            View all <ArrowUpRight className="size-4" />
+            View all <ArrowUpRight size={13} />
           </motion.span>
         </span>
       </div>

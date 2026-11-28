@@ -1,6 +1,5 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import './numeric-font.css'
 import '@fontsource-variable/inter'
 import '@fontsource-variable/geist'
 import '@fontsource-variable/plus-jakarta-sans'
@@ -14,6 +13,8 @@ import '@fontsource/roboto/700.css'
 import App from './App'
 import './tailwind.css'
 import './index.css'
+// Numerals last: these @font-face rules must win over the theme fonts above.
+import './numeric-font.css'
 
 const storedFont = localStorage.getItem('shen-font')
 if (storedFont && storedFont !== 'native') {

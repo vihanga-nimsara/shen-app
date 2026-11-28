@@ -1,6 +1,6 @@
 {
   "name": "shen-app",
-  "version": "0.3.30",
+  "version": "0.3.31",
   "private": true,
   "type": "module",
   "description": "Shen — a desktop music companion with a real UI",

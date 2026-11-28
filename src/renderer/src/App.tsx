@@ -1770,7 +1770,7 @@ export default function App() {
                   </p>
                   <p className="muted">{nfError}</p>
                   <button className="btn small" onClick={() => void loadNf()} disabled={nfLoading}>
-                    <RefreshCw size={12} className={nfLoading ? 'spin' : undefined} /> Try again
+                    {nfLoading ? <Ring className="row-loader" /> : <RefreshCw size={12} />} Try again
                   </button>
                 </div>
               ) : nf ? (
@@ -1857,7 +1857,7 @@ export default function App() {
                       Last {Math.round(nf.duration / 60)} minutes · refreshed every 5s
                     </span>
                     <button className="btn small" onClick={() => void loadNf()} disabled={nfLoading}>
-                      <RefreshCw size={12} className={nfLoading ? 'spin' : undefined} /> Refresh
+                      {nfLoading ? <Ring className="row-loader" /> : <RefreshCw size={12} />} Refresh
                     </button>
                   </div>
                 </>

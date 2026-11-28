@@ -309,6 +309,17 @@ function showUpdateNotification(title: string, body: string, onClick?: () => voi
   notification.show()
 }
 
+function friendlyUpdateError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err)
+  if (/latest\.yml|404|Not Found/i.test(raw)) {
+    return 'The new release is still publishing. Try again in a minute.'
+  }
+  if (/ENOTFOUND|ECONN|ETIMEDOUT|EAI_AGAIN|socket|network/i.test(raw)) {
+    return 'Could not reach the update server. Check your connection.'
+  }
+  return 'Update check failed. Try again later.'
+}
+
 function setupUpdateIpc() {
   ipcMain.handle('shen:version', () => app.getVersion())
   ipcMain.handle('shen:check-updates', async () => {
@@ -320,10 +331,8 @@ function setupUpdateIpc() {
     try {
       await autoUpdater.checkForUpdates()
     } catch (err) {
-      broadcastUpdate({
-        state: 'error',
-        message: err instanceof Error ? err.message : String(err)
-      })
+      console.error('[update] check failed:', err instanceof Error ? err.message : err)
+      broadcastUpdate({ state: 'error', message: friendlyUpdateError(err) })
     }
   })
   ipcMain.handle('shen:install-update', () => {
@@ -359,7 +368,7 @@ function setupAutoUpdates() {
   })
   autoUpdater.on('error', (err) => {
     console.error('[update] error:', err.message)
-    broadcastUpdate({ state: 'error', message: err.message })
+    broadcastUpdate({ state: 'error', message: friendlyUpdateError(err) })
   })
   // Let the window settle before hitting GitHub.
   setTimeout(() => {

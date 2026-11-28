@@ -958,7 +958,7 @@ export default function App() {
       list.push({
         id: 'update',
         title: 'Update check failed',
-        subtitle: update.message || 'Could not reach GitHub',
+        subtitle: updateInfo.body,
         time: 'now',
         tone: 'danger'
       })
@@ -2070,7 +2070,7 @@ export default function App() {
                 ) : null}
                 <div className={`support-note${update.state === 'error' ? ' error' : ''}`}>
                   {update.state === 'error'
-                    ? update.message
+                    ? updateInfo.body
                     : 'Updates come from GitHub releases and install when Shen restarts.'}
                 </div>
               </div>
@@ -2884,7 +2884,10 @@ function updateMessage(status: UpdateStatus): { title: string; body: string } {
     case 'error':
       return {
         title: 'Update check failed',
-        body: status.message || 'Could not reach GitHub.'
+        body:
+          status.message && status.message.length <= 140
+            ? status.message
+            : 'Could not check for updates. Try again in a minute.'
       }
     default:
       return { title: 'Shen is up to date', body: 'You are on the latest GitHub release.' }

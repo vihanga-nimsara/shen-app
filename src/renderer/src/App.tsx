@@ -114,7 +114,7 @@ import { VitalsWidget, type VitalsRing, type VitalsStat } from './components/ui/
 import { MinimalStepsCard } from './components/ui/minimal-steps-card'
 import { Alert, AlertAction, AlertDescription } from './components/ui/alert'
 import { Button } from './components/ui/button'
-import { NotificationList } from './components/ui/notification-list'
+import { NotificationList, type AppNotification } from './components/ui/notification-list'
 import { SettingDropdown } from './components/ui/setting-dropdown'
 import { GlassIconReveal } from './components/ui/glass-reveal-21st'
 
@@ -942,6 +942,61 @@ export default function App() {
     status?.guilds?.find((entry) => entry.id === status.guildId) ??
     null
 
+  // Real user-facing updates for the sidebar card (no build/dev noise).
+  const notifications: AppNotification[] = (() => {
+    const list: AppNotification[] = []
+    if (update.state === 'downloaded') {
+      list.push({
+        id: 'update',
+        title: 'Update ready to install',
+        subtitle: `Shen ${update.version} installs on restart`,
+        time: 'now'
+      })
+    } else if (update.state === 'available' || update.state === 'downloading') {
+      list.push({ id: 'update', title: updateInfo.title, subtitle: updateInfo.body, time: 'now' })
+    } else if (update.state === 'error') {
+      list.push({
+        id: 'update',
+        title: 'Update check failed',
+        subtitle: update.message || 'Could not reach GitHub',
+        time: 'now',
+        tone: 'danger'
+      })
+    } else if (update.state === 'idle') {
+      list.push({
+        id: 'update',
+        title: 'You are up to date',
+        subtitle: `Shen ${appVersion}`,
+        time: 'now'
+      })
+    }
+
+    list.push({
+      id: 'discord',
+      title: status?.botReady ? 'Discord connected' : 'Discord offline',
+      subtitle: statusGuild?.voiceChannelName
+        ? `Playing in ${statusGuild.voiceChannelName}`
+        : statusGuild?.name
+          ? `Ready in ${statusGuild.name}`
+          : 'Remote playback in your server',
+      time: 'live',
+      tone: status?.botReady ? 'success' : 'danger'
+    })
+
+    const queueLength = status?.queueLength ?? 0
+    list.push({
+      id: 'queue',
+      title: queueLength > 0 ? `${queueLength} in the queue` : 'Queue is empty',
+      subtitle: status?.nowPlaying?.title
+        ? `Now playing ${status.nowPlaying.title}`
+        : 'Add something from Search',
+      time: 'live',
+      count: queueLength || undefined
+    })
+
+    return list
+  })()
+
   // The titlebar menu is a short command list, not a second copy of the
   // sidebar. Only the seven places people jump between live here plus the
   // app-level actions and Settings; Status, About and Support stay in the sidebar.
@@ -1193,7 +1248,7 @@ export default function App() {
           </div>
         ) : null}
         <div className="sidebar-footer">
-          <NotificationList />
+          <NotificationList items={notifications} onOpen={() => openView('support')} />
           {user ? (
             <div className="account-wrap" ref={accountMenuRef}>
               <button

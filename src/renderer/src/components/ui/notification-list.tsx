@@ -1,31 +1,16 @@
 "use client"
 
-import * as React from "react"
-
-import { RotateCcw, ArrowUpRight } from "lucide-react"
 import { motion, type Transition } from "framer-motion"
+import { RotateCcw, ArrowUpRight } from "lucide-react"
 
-const notifications = [
-  {
-    id: 1,
-    title: "NPM Install Complete",
-    subtitle: "1,227 packages added!",
-    time: "just now",
-    count: 2,
-  },
-  {
-    id: 2,
-    title: "Build Succeeded",
-    subtitle: "Build finished in 12.34s",
-    time: "1m 11s",
-  },
-  {
-    id: 3,
-    title: "Lint Passed",
-    subtitle: "No problems found",
-    time: "5m",
-  },
-]
+export interface AppNotification {
+  id: string
+  title: string
+  subtitle: string
+  time: string
+  count?: number
+  tone?: "default" | "success" | "danger"
+}
 
 const transition: Transition = {
   type: "spring",
@@ -59,7 +44,14 @@ const viewAllTextVariants = {
   expanded: { opacity: 1, y: 0, pointerEvents: "auto" as const },
 }
 
-function NotificationList() {
+interface NotificationListProps {
+  items: AppNotification[]
+  onOpen?: () => void
+}
+
+function NotificationList({ items, onOpen }: NotificationListProps) {
+  if (items.length === 0) return null
+
   return (
     <motion.div
       className="notif-list"
@@ -68,34 +60,34 @@ function NotificationList() {
       aria-label="Notifications"
     >
       <div>
-        {notifications.map((notification, i) => (
+        {items.map((item, i) => (
           <motion.div
-            key={notification.id}
-            className="notif-card"
+            key={item.id}
+            className={`notif-card${item.tone && item.tone !== "default" ? ` is-${item.tone}` : ""}`}
             variants={getCardVariants(i)}
             transition={transition}
-            style={{ zIndex: notifications.length - i }}
+            style={{ zIndex: items.length - i }}
           >
             <div className="notif-card-top">
-              <span className="notif-title">{notification.title}</span>
-              {notification.count ? (
+              <span className="notif-title">{item.title}</span>
+              {item.count !== undefined ? (
                 <span className="notif-recount">
                   <RotateCcw size={11} />
-                  <span>{notification.count}</span>
+                  <span>{item.count}</span>
                 </span>
               ) : null}
             </div>
             <div className="notif-meta">
-              <span>{notification.time}</span>
+              <span>{item.time}</span>
               <span className="notif-dot">·</span>
-              <span>{notification.subtitle}</span>
+              <span>{item.subtitle}</span>
             </div>
           </motion.div>
         ))}
       </div>
 
       <div className="notif-foot">
-        <span className="notif-badge">{notifications.length}</span>
+        <span className="notif-badge">{items.length}</span>
         <span className="notif-switch">
           <motion.span
             className="notif-label"
@@ -104,13 +96,15 @@ function NotificationList() {
           >
             Notifications
           </motion.span>
-          <motion.span
+          <motion.button
+            type="button"
             className="notif-label notif-viewall"
             variants={viewAllTextVariants}
             transition={textSwitchTransition}
+            onClick={onOpen}
           >
             View all <ArrowUpRight size={13} />
-          </motion.span>
+          </motion.button>
         </span>
       </div>
     </motion.div>

@@ -228,6 +228,12 @@ function openLoginInBrowser(rawUrl: string) {
   })()
 }
 
+function appIconPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'icon.png')
+    : path.join(__dirname, '..', '..', 'build', 'icon.png')
+}
+
 function createWindow(appUrl: string) {
   mainWindow = new BrowserWindow({
     width: 1100,
@@ -236,6 +242,7 @@ function createWindow(appUrl: string) {
     minHeight: 500,
     show: false,
     title: 'Shen',
+    icon: appIconPath(),
     backgroundColor: '#080808',
     titleBarStyle: 'hidden',
     ...(process.platform === 'win32'

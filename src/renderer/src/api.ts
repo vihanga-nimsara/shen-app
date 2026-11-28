@@ -160,8 +160,14 @@ export async function logout(): Promise<void> {
   await request('/api/auth/logout', { method: 'POST' })
 }
 
-export async function queueByUrl(url: string): Promise<void> {
-  await request('/api/add-url', { method: 'POST', body: { input: url } })
+export interface AddUrlResult {
+  type: 'track' | 'playlist'
+  added: number
+  tracks: Track[]
+}
+
+export async function queueByUrl(url: string): Promise<AddUrlResult> {
+  return request<AddUrlResult>('/api/add-url', { method: 'POST', body: { input: url } })
 }
 
 export async function saveByUrl(url: string): Promise<void> {

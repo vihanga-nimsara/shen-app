@@ -1609,6 +1609,43 @@ p {
   max-width: 320px;
 }
 
+.playlist-import {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  border-radius: var(--radius-panel);
+  background: var(--bg-raised);
+  box-shadow: inset 0 0 0 0.5px var(--ring-base);
+}
+
+.playlist-import-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.playlist-import-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.playlist-import-row .input {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.playlist-import-row .playlist-import-name {
+  flex: 0 1 210px;
+}
+
+.playlist-import-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .playlists {
   display: flex;
   flex-direction: column;

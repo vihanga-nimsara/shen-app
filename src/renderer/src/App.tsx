@@ -218,6 +218,8 @@ export default function App() {
   const [favorites, setFavorites] = useState<Track[]>([])
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
   const [newPlaylist, setNewPlaylist] = useState('')
+  const [playlistUrl, setPlaylistUrl] = useState('')
+  const [playlistImportName, setPlaylistImportName] = useState('')
 
   const [status, setStatus] = useState<Status | null>(() =>
     import.meta.env.DEV ? devStatus() : null
@@ -729,6 +731,34 @@ export default function App() {
   const openPlaylist = (id: string) => {
     setSelectedPlaylist(id)
     setView('playlists')
+  }
+
+  // Paste a YouTube playlist link: queue every track, and optionally save the
+  // resolved tracks as a local playlist in one step.
+  const importByUrl = (mode: 'queue' | 'save') => {
+    const input = playlistUrl.trim()
+    if (!input) return
+    void run(async () => {
+      const result = await queueByUrl(input)
+      if (mode === 'save') {
+        const fallbackName =
+          result.type === 'playlist'
+            ? `YouTube playlist · ${result.tracks.length} tracks`
+            : result.tracks[0]?.title ?? 'YouTube import'
+        const created = await createPlaylist(playlistImportName.trim() || fallbackName)
+        let updated = created
+        for (const track of result.tracks) {
+          updated = await addTrackToPlaylist(created.id, track)
+        }
+        setPlaylists((list) => {
+          const exists = list.some((p) => p.id === updated.id)
+          return exists ? list.map((p) => (p.id === updated.id ? updated : p)) : [...list, updated]
+        })
+        setPlaylistImportName('')
+      }
+      setPlaylistUrl('')
+      await refreshStatus()
+    })
   }
 
   const playlist = playlists.find((p) => p.id === selectedPlaylist) ?? null
@@ -2093,6 +2123,47 @@ export default function App() {
               </>
             ) : (
               <>
+                <div className="playlist-import">
+                  <div className="playlist-import-head">
+                    <div className="setting-name">Add a YouTube playlist</div>
+                    <div className="setting-desc">
+                      Paste a playlist link to queue every track, or save it as a playlist.
+                    </div>
+                  </div>
+                  <div className="playlist-import-row">
+                    <input
+                      className="input"
+                      value={playlistUrl}
+                      onChange={(e) => setPlaylistUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/playlist?list=…"
+                      spellCheck={false}
+                    />
+                    <input
+                      className="input playlist-import-name"
+                      value={playlistImportName}
+                      onChange={(e) => setPlaylistImportName(e.target.value)}
+                      placeholder="Playlist name (optional)"
+                    />
+                  </div>
+                  <div className="playlist-import-actions">
+                    <button
+                      className="btn"
+                      type="button"
+                      disabled={busy || !playlistUrl.trim()}
+                      onClick={() => importByUrl('queue')}
+                    >
+                      <ListMusic size={13} /> Queue
+                    </button>
+                    <button
+                      className="btn primary"
+                      type="button"
+                      disabled={busy || !playlistUrl.trim()}
+                      onClick={() => importByUrl('save')}
+                    >
+                      <Plus size={13} /> Save as playlist
+                    </button>
+                  </div>
+                </div>
                 <form
                   className="inline-form"
                   onSubmit={(e) => {

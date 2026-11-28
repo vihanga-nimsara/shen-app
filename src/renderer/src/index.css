@@ -63,7 +63,7 @@
   --radius: 6px;
   --radius-sm: 4px;
 
-  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font: "Shen UI", "Segoe UI", "Segoe UI Variable Text", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
   --font-numeric: "Space Grotesk Variable", "Space Grotesk", var(--font);
 
@@ -97,6 +97,15 @@ html[data-font='google-sans'] {
 
 html[data-font='plus-jakarta-sans'] {
   --font: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+/* Native theme: alias the OS UI font under a name we can override for digits. */
+@font-face {
+  font-family: "Shen UI";
+  src: local("Segoe UI"), local("Segoe UI Variable Text"), local("Helvetica Neue"), local("Arial");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
 }
 
 /* Saans is a commercial typeface: use it when installed, otherwise fall back. */
@@ -720,6 +729,15 @@ p {
 
 .notif-viewall:hover {
   color: var(--text-base);
+}
+
+.apple-emoji {
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  margin: 0 0.03em;
+  vertical-align: -0.16em;
+  object-fit: contain;
 }
 
 .account-wrap {
@@ -2130,37 +2148,147 @@ input[type='range']:disabled::-webkit-slider-thumb {
 }
 
 .setting-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   flex-shrink: 0;
   min-width: 178px;
   height: 30px;
-  padding: 0 30px 0 10px;
+  padding: 0 10px;
   border: none;
   border-radius: 6px;
-  background-color: var(--seg-track);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23929292' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 9px center;
-  background-size: 12px;
+  background: var(--seg-track);
   color: var(--text-base);
   font: inherit;
   font-size: 12px;
   font-weight: 450;
   box-shadow: inset 0 0 0 0.5px var(--ring-muted);
-  appearance: none;
-  -webkit-appearance: none;
   cursor: pointer;
   transition: box-shadow var(--dur) var(--ease);
 }
 
 .setting-select:hover,
-.setting-select:focus-visible {
+.setting-select:focus-visible,
+.setting-select[data-state='open'] {
   outline: none;
   box-shadow: inset 0 0 0 0.5px var(--ring-strong);
 }
 
-.setting-select option {
+.setting-select-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-select-chevron {
+  flex-shrink: 0;
+  color: var(--text-weaker);
+  transition: transform var(--dur) var(--ease);
+}
+
+.setting-select[data-state='open'] .setting-select-chevron {
+  transform: rotate(180deg);
+}
+
+/* ---------- dropdown menu (shadcn + radix, app tokens) ---------- */
+.dd-content {
+  z-index: 80;
+  min-width: var(--radix-dropdown-menu-trigger-width, 180px);
+  padding: 4px;
+  border-radius: 7px;
   background: var(--bg-raised);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 0.5px var(--ring-base);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+  animation: dd-in 130ms var(--ease);
+}
+
+.dd-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 450;
+  outline: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dd-item[data-highlighted],
+.dd-item:focus {
+  background: var(--overlay-hover);
   color: var(--text-base);
+}
+
+.dd-item[data-disabled] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.dd-item-check {
+  padding-left: 8px;
+}
+
+.dd-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-base);
+}
+
+.dd-indicator svg {
+  width: 13px;
+  height: 13px;
+}
+
+.dd-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dd-label {
+  padding: 4px 8px;
+  color: var(--text-weaker);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.dd-sep {
+  height: 0.5px;
+  margin: 4px -4px;
+  background: var(--ring-base);
+}
+
+.dd-shortcut {
+  margin-left: auto;
+  color: var(--text-weaker);
+  font-size: 11px;
+}
+
+.dd-sub-arrow {
+  width: 13px;
+  height: 13px;
+  margin-left: auto;
+}
+
+@keyframes dd-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .settings-foot {

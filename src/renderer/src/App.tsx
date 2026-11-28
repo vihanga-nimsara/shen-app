@@ -103,6 +103,7 @@ import { devStatus } from './dev-data'
 import { submitFeedback, type FeedbackKind, type FeedbackResult } from './feedback'
 import type { UpdateStatus } from '../../shared/update-types'
 import { Ring } from './components/ring'
+import { AppleEmoji } from './components/apple-emoji'
 import { DiscordIcon } from './components/discord-icon'
 import SoftAurora from './components/SoftAurora'
 import {
@@ -114,6 +115,7 @@ import { MinimalStepsCard } from './components/ui/minimal-steps-card'
 import { Alert, AlertAction, AlertDescription } from './components/ui/alert'
 import { Button } from './components/ui/button'
 import { NotificationList } from './components/ui/notification-list'
+import { SettingDropdown } from './components/ui/setting-dropdown'
 import { GlassIconReveal } from './components/ui/glass-reveal-21st'
 
 type View =
@@ -885,10 +887,6 @@ export default function App() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const greetingMark = greetingEmoji(new Date())
-  const ua = navigator.userAgent
-  const electronVersion = ua.match(/Electron\/([\d.]+)/)?.[1] ?? '—'
-  const chromiumVersion = ua.match(/Chrome\/([\d.]+)/)?.[1]?.split('.')[0] ?? '—'
-  const architecture = /arm64|aarch64/i.test(ua) ? 'arm64' : 'x64'
 
   const dockTrack = current ?? status?.nowPlaying ?? null
   const nowTrack = current ?? status?.nowPlaying ?? null
@@ -1398,7 +1396,7 @@ export default function App() {
               <div className="home-hero">
                 <div>
                   <h2 className="home-greeting">
-                    {greeting} {greetingMark}
+                    {greeting} <AppleEmoji>{greetingMark}</AppleEmoji>
                   </h2>
                   <p className="home-sub">Here’s what’s been playing on Shen.</p>
                 </div>
@@ -1818,83 +1816,64 @@ export default function App() {
 
               <div className="about-grid">
                 <section className="about-panel">
-                  <h3>Details</h3>
+                  <h3>What you can do</h3>
                   <div className="about-row">
                     <span className="about-row-icon">
-                      <Cpu size={14} />
+                      <SearchIcon size={14} />
                     </span>
                     <span className="about-row-copy">
-                      <span className="about-row-name">Electron</span>
-                      <span className="about-row-sub">Desktop runtime</span>
+                      <span className="about-row-name">Search anything</span>
+                      <span className="about-row-sub">Music and videos from one place</span>
                     </span>
-                    <span className="about-row-value">{electronVersion}</span>
                   </div>
                   <div className="about-row">
                     <span className="about-row-icon">
-                      <AppWindow size={14} />
+                      <ListMusic size={14} />
                     </span>
                     <span className="about-row-copy">
-                      <span className="about-row-name">Chromium</span>
-                      <span className="about-row-sub">Rendering engine</span>
+                      <span className="about-row-name">Share a queue</span>
+                      <span className="about-row-sub">Everyone sees the same line-up</span>
                     </span>
-                    <span className="about-row-value">{chromiumVersion}</span>
                   </div>
                   <div className="about-row">
                     <span className="about-row-icon">
-                      <Boxes size={14} />
+                      <Heart size={14} />
                     </span>
                     <span className="about-row-copy">
-                      <span className="about-row-name">Architecture</span>
-                      <span className="about-row-sub">Build target</span>
+                      <span className="about-row-name">Keep your library</span>
+                      <span className="about-row-sub">Favorites and playlists that follow you</span>
                     </span>
-                    <span className="about-row-value">{architecture}</span>
-                  </div>
-                  <div className="about-row">
-                    <span className="about-row-icon">
-                      <Download size={14} />
-                    </span>
-                    <span className="about-row-copy">
-                      <span className="about-row-name">Updates</span>
-                      <span className="about-row-sub">Delivered automatically</span>
-                    </span>
-                    <span className="about-row-value">GitHub</span>
                   </div>
                 </section>
 
                 <section className="about-panel">
-                  <h3>Supported platforms</h3>
+                  <h3>Shen on Discord</h3>
                   <div className="about-row">
                     <span className="about-row-icon">
-                      <Monitor size={14} />
+                      <Radio size={14} />
                     </span>
                     <span className="about-row-copy">
-                      <span className="about-row-name">Windows</span>
-                      <span className="about-row-sub">10 / 11 · 64-bit</span>
-                    </span>
-                    <span className="about-status supported">
-                      <span className="about-dot" aria-hidden="true" />
-                      Available
+                      <span className="about-row-name">Play in voice</span>
+                      <span className="about-row-sub">Send tracks straight to your server</span>
                     </span>
                   </div>
                   <div className="about-row">
                     <span className="about-row-icon">
-                      <Laptop size={14} />
+                      <SkipForward size={14} />
                     </span>
                     <span className="about-row-copy">
-                      <span className="about-row-name">macOS</span>
-                      <span className="about-row-sub">Apple silicon / Intel</span>
+                      <span className="about-row-name">Control from here</span>
+                      <span className="about-row-sub">Skip, pause, and stop remotely</span>
                     </span>
-                    <span className="about-status">Not yet</span>
                   </div>
                   <div className="about-row">
                     <span className="about-row-icon">
-                      <Terminal size={14} />
+                      <Clock3 size={14} />
                     </span>
                     <span className="about-row-copy">
-                      <span className="about-row-name">Linux</span>
-                      <span className="about-row-sub">x64 builds</span>
+                      <span className="about-row-name">Stay in sync</span>
+                      <span className="about-row-sub">What's playing, live in both places</span>
                     </span>
-                    <span className="about-status">Not yet</span>
                   </div>
                 </section>
               </div>
@@ -2180,34 +2159,28 @@ export default function App() {
                       <div className="setting-name">Theme</div>
                       <div className="setting-desc">Follow the system or pick a palette.</div>
                     </div>
-                    <div className="segmented">
-                      {(['dark', 'light', 'system'] as Theme[]).map((item) => (
-                        <button
-                          key={item}
-                          className={theme === item ? 'active' : ''}
-                          onClick={() => setTheme(item)}
-                        >
-                          {item === 'dark' ? 'Dark' : item === 'light' ? 'Light' : 'System'}
-                        </button>
-                      ))}
-                    </div>
+                    <SettingDropdown
+                      ariaLabel="Theme"
+                      value={theme}
+                      options={[
+                        { value: 'dark', label: 'Dark' },
+                        { value: 'light', label: 'Light' },
+                        { value: 'system', label: 'System' }
+                      ]}
+                      onChange={setTheme}
+                    />
                   </div>
                   <div className="setting-row">
                     <div className="setting-copy">
                       <div className="setting-name">Interface scale</div>
                       <div className="setting-desc">Scale the whole interface up or down.</div>
                     </div>
-                    <div className="segmented">
-                      {SCALES.map((item) => (
-                        <button
-                          key={item}
-                          className={scale === item ? 'active' : ''}
-                          onClick={() => setScale(item)}
-                        >
-                          {item}%
-                        </button>
-                      ))}
-                    </div>
+                    <SettingDropdown
+                      ariaLabel="Interface scale"
+                      value={scale}
+                      options={SCALES.map((item) => ({ value: item, label: `${item}%` }))}
+                      onChange={setScale}
+                    />
                   </div>
                   <div className="setting-row">
                     <div className="setting-copy">
@@ -2216,18 +2189,12 @@ export default function App() {
                         Pick a typeface. Native uses the fonts shipped with your OS.
                       </div>
                     </div>
-                    <select
-                      className="setting-select"
+                    <SettingDropdown
+                      ariaLabel="UI font"
                       value={font}
-                      onChange={(event) => setFont(event.target.value as Font)}
-                      aria-label="UI font"
-                    >
-                      {FONTS.map((item) => (
-                        <option key={item} value={item}>
-                          {FONT_LABEL[item]}
-                        </option>
-                      ))}
-                    </select>
+                      options={FONTS.map((item) => ({ value: item, label: FONT_LABEL[item] }))}
+                      onChange={setFont}
+                    />
                   </div>
                 </div>
                 <div className="settings-card">

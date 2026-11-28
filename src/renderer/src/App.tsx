@@ -133,8 +133,27 @@ type Theme = 'dark' | 'light' | 'system'
 
 const SCALES = [90, 100, 110, 125]
 
-type Font = 'native' | 'inter' | 'segoe' | 'ubuntu' | 'roboto' | 'geist' | 'google-sans'
-const FONTS: Font[] = ['native', 'inter', 'segoe', 'ubuntu', 'roboto', 'geist', 'google-sans']
+type Font =
+  | 'native'
+  | 'inter'
+  | 'segoe'
+  | 'ubuntu'
+  | 'roboto'
+  | 'geist'
+  | 'google-sans'
+  | 'plus-jakarta-sans'
+  | 'saans'
+const FONTS: Font[] = [
+  'native',
+  'inter',
+  'segoe',
+  'ubuntu',
+  'roboto',
+  'geist',
+  'google-sans',
+  'plus-jakarta-sans',
+  'saans'
+]
 const FONT_LABEL: Record<Font, string> = {
   native: 'Native',
   inter: 'Inter',
@@ -142,7 +161,9 @@ const FONT_LABEL: Record<Font, string> = {
   ubuntu: 'Ubuntu',
   roboto: 'Roboto',
   geist: 'Geist',
-  'google-sans': 'Google Sans'
+  'google-sans': 'Google Sans',
+  'plus-jakarta-sans': 'Plus Jakarta Sans',
+  saans: 'Saans'
 }
 
 // One bar count for every sparkline in the app, so the connection strip, the
@@ -2195,17 +2216,18 @@ export default function App() {
                         Pick a typeface. Native uses the fonts shipped with your OS.
                       </div>
                     </div>
-                    <div className="segmented">
+                    <select
+                      className="setting-select"
+                      value={font}
+                      onChange={(event) => setFont(event.target.value as Font)}
+                      aria-label="UI font"
+                    >
                       {FONTS.map((item) => (
-                        <button
-                          key={item}
-                          className={font === item ? 'active' : ''}
-                          onClick={() => setFont(item)}
-                        >
+                        <option key={item} value={item}>
                           {FONT_LABEL[item]}
-                        </button>
+                        </option>
                       ))}
-                    </div>
+                    </select>
                   </div>
                 </div>
                 <div className="settings-card">

@@ -1,6 +1,6 @@
 {
   "name": "shen-app",
-  "version": "0.3.28",
+  "version": "0.3.29",
   "private": true,
   "type": "module",
   "description": "Shen — a desktop music companion with a real UI",
@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",
     "electron-updater": "^6.8.11",
     "framer-motion": "^14.14.0"

@@ -113,6 +113,7 @@ import { VitalsWidget, type VitalsRing, type VitalsStat } from './components/ui/
 import { MinimalStepsCard } from './components/ui/minimal-steps-card'
 import { Alert, AlertAction, AlertDescription } from './components/ui/alert'
 import { Button } from './components/ui/button'
+import { GlassIconReveal } from './components/ui/glass-reveal-21st'
 
 type View =
   | 'home'
@@ -219,6 +220,8 @@ export default function App() {
   const [feedbackEmail, setFeedbackEmail] = useState('')
   const [feedbackBusy, setFeedbackBusy] = useState(false)
   const [feedbackResult, setFeedbackResult] = useState<FeedbackResult | null>(null)
+  const [intro, setIntro] = useState(true)
+  const [introFading, setIntroFading] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows')
@@ -297,6 +300,20 @@ export default function App() {
     else document.documentElement.dataset.font = font
     localStorage.setItem('shen-font', font)
   }, [font])
+
+  // Intro: the glass reveal plays once on open, then the overlay fades away. The reveal reports
+  // when it comes to rest; these timers are the safety net for a logo that never decodes.
+  useEffect(() => {
+    if (!intro) return
+    const safety = window.setTimeout(() => setIntroFading(true), 9000)
+    return () => window.clearTimeout(safety)
+  }, [intro])
+
+  useEffect(() => {
+    if (!introFading) return
+    const timer = window.setTimeout(() => setIntro(false), 750)
+    return () => window.clearTimeout(timer)
+  }, [introFading])
 
   const refreshLibrary = useCallback(async () => setLibrary(await getLibrary()), [])
   const refreshPlaylists = useCallback(async () => {
@@ -976,6 +993,29 @@ export default function App() {
 
   return (
     <div className={`window${isWindows ? ' is-windows' : ''}`}>
+      {intro ? (
+        <div
+          className={`intro-overlay${introFading ? ' is-leaving' : ''}`}
+          aria-hidden="true"
+          onClick={() => setIntroFading(true)}
+        >
+          <GlassIconReveal
+            className="intro-reveal"
+            logo={appIcon}
+            label="Shen"
+            look="dark"
+            background="#080808"
+            plateColor="#0d0d0d"
+            originalColors
+            loop={false}
+            hold={0}
+            tileSize={380}
+            tuning={{ present: 1.8 }}
+            speed={1.15}
+            onDone={() => setIntroFading(true)}
+          />
+        </div>
+      ) : null}
       <header className="titlebar">
         <div className="tb-group">
           <button

@@ -1,0 +1,75 @@
+/* Space Grotesk glyphs for numerals across every font theme.
+   Declared before the @fontsource rules so the narrower unicode-range
+   takes precedence for digits. */
+@font-face {
+  font-family: "Inter";
+  src: url(/fonts/space-grotesk.woff2) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
+}
+@font-face {
+  font-family: "Inter Variable";
+  src: url(/fonts/space-grotesk.woff2) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
+}
+@font-face {
+  font-family: "Segoe UI";
+  src: url(/fonts/space-grotesk.woff2) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
+}
+@font-face {
+  font-family: "Segoe UI Variable Text";
+  src: url(/fonts/space-grotesk.woff2) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
+}
+@font-face {
+  font-family: "Ubuntu";
+  src: url(/fonts/space-grotesk.woff2) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
+}
+@font-face {
+  font-family: "Roboto";
+  src: url(/fonts/space-grotesk.woff2) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
+}
+@font-face {
+  font-family: "Geist";
+  src: url(/fonts/space-grotesk.woff2) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
+}
+@font-face {
+  font-family: "Geist Variable";
+  src: url(/fonts/space-grotesk.woff2) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
+}
+@font-face {
+  font-family: "Google Sans";
+  src: url(/fonts/space-grotesk.woff2) format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0030-0039, U+002E, U+002C, U+0025, U+002B, U+002D;
+}

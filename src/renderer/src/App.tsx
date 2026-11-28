@@ -132,14 +132,16 @@ type Theme = 'dark' | 'light' | 'system'
 
 const SCALES = [90, 100, 110, 125]
 
-type Font = 'native' | 'inter' | 'segoe' | 'ubuntu' | 'roboto'
-const FONTS: Font[] = ['native', 'inter', 'segoe', 'ubuntu', 'roboto']
+type Font = 'native' | 'inter' | 'segoe' | 'ubuntu' | 'roboto' | 'geist' | 'google-sans'
+const FONTS: Font[] = ['native', 'inter', 'segoe', 'ubuntu', 'roboto', 'geist', 'google-sans']
 const FONT_LABEL: Record<Font, string> = {
   native: 'Native',
   inter: 'Inter',
   segoe: 'Segoe UI',
   ubuntu: 'Ubuntu',
-  roboto: 'Roboto'
+  roboto: 'Roboto',
+  geist: 'Geist',
+  'google-sans': 'Google Sans'
 }
 
 // One bar count for every sparkline in the app, so the connection strip, the

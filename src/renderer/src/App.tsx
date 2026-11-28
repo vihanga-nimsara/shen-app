@@ -1485,16 +1485,12 @@ export default function App() {
                   </h2>
                   <p className="home-sub">Here’s what’s been playing on Shen.</p>
                 </div>
-                <div className="home-now">
-                  {status?.nowPlaying ? (
-                    <>
-                      <span className="live-dot" aria-hidden="true" />
-                      <span className="home-now-title">{status.nowPlaying.title}</span>
-                    </>
-                  ) : (
-                    <span className="muted">Nothing playing right now</span>
-                  )}
-                </div>
+                {status?.nowPlaying ? (
+                  <div className="home-now">
+                    <span className="live-dot" aria-hidden="true" />
+                    <span className="home-now-title">{status.nowPlaying.title}</span>
+                  </div>
+                ) : null}
               </div>
 
               <div className="stat-grid">

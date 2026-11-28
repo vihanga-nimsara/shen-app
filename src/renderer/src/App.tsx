@@ -113,6 +113,7 @@ import { VitalsWidget, type VitalsRing, type VitalsStat } from './components/ui/
 import { MinimalStepsCard } from './components/ui/minimal-steps-card'
 import { Alert, AlertAction, AlertDescription } from './components/ui/alert'
 import { Button } from './components/ui/button'
+import { NotificationList } from './components/ui/notification-list'
 import { GlassIconReveal } from './components/ui/glass-reveal-21st'
 
 type View =
@@ -1143,6 +1144,7 @@ export default function App() {
           </div>
         ) : null}
         <div className="sidebar-footer">
+          <NotificationList />
           {user ? (
             <div className="account-wrap" ref={accountMenuRef}>
               <button
